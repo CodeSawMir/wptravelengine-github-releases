@@ -1,9 +1,13 @@
 <?php
 /**
  * Plugin Name: WPTE DevZone – GitHub
+ * Plugin URI:  https://github.com/CodeSawMir/wptravelengine-github-releases
  * Description: Adds a "GitHub" tab to WP Travel Engine Dev Zone for GitHub release management.
  * Version:     1.0.0
- * Requires:    _wptravelengine-devzone-plugin
+ * Author:      Samir Shrestha
+ * Requires:    wptravelengine-devzone-plugin
+ * Requires WP: 6.9
+ * Requires PHP: 7.4
  */
 
 defined( 'ABSPATH' ) || exit;
