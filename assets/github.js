@@ -1346,7 +1346,7 @@ window.wpteGithubBoot = function () {
 
 // Handle initial hard page load when PHP pre-renders the tab (?tab=github in URL).
 // At this point DOMContentLoaded may or may not have fired.
-if ( document.readyState === 'info' ) {
+if ( document.readyState === 'loading' ) {
 	document.addEventListener( 'DOMContentLoaded', window.wpteGithubBoot );
 } else if ( document.getElementById( 'wpte-dz-github-root' ) ) {
 	window.wpteGithubBoot();
