@@ -1,5 +1,4 @@
 <?php
-return;
 /**
  * Plugin Name: WPTE DevZone – GitHub
  * Description: Adds a "GitHub" tab to WP Travel Engine Dev Zone for GitHub release management.

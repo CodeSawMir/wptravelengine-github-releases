@@ -40,7 +40,7 @@ class GithubInstaller {
 			return new \WP_Error( 'empty_zip', "Downloaded file is too small ({$zip_size} bytes)." );
 		}
 
-		$stage_dir = get_temp_dir() . 'wpte-dz-gh-stage-' . sanitize_title( $repo_name ) . '-' . time() . '/';
+		$stage_dir = get_temp_dir() . 'wpte-dz-gh-stage-' . sanitize_title( $repo_name ) . '-' . uniqid() . '/';
 		@mkdir( $stage_dir, 0755, true );
 
 		$unzip = unzip_file( $tmp, $stage_dir );
@@ -73,12 +73,19 @@ class GithubInstaller {
 			self::rmdir_recursive( $plugin_dir );
 		}
 
-		if ( ! rename( rtrim( $source_dir, '/' ), $plugin_dir ) ) {
+		if ( ! @rename( rtrim( $source_dir, '/' ), $plugin_dir ) ) {
+			// rename() fails across filesystem boundaries (e.g. /tmp on tmpfs vs plugins on ext4).
+			// Fall back to copy + delete so the install works regardless of mount setup.
+			$copy_result = copy_dir( $source_dir, $plugin_dir );
+			self::rmdir_recursive( rtrim( $source_dir, '/' ) );
 			self::rmdir_recursive( $stage_dir );
-			return new \WP_Error( 'move_failed', "Could not move plugin to {$plugin_dir}." );
-		}
 
-		self::rmdir_recursive( $stage_dir );
+			if ( is_wp_error( $copy_result ) ) {
+				return new \WP_Error( 'move_failed', 'Could not install plugin: ' . $copy_result->get_error_message() );
+			}
+		} else {
+			self::rmdir_recursive( $stage_dir );
+		}
 
 		$plugin_file = self::detect_plugin_file( $final_slug );
 

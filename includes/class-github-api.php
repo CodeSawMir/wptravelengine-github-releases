@@ -442,7 +442,10 @@ class GithubApi {
 		}
 
 		$zip_tmp = $tmp . '.zip';
-		rename( $tmp, $zip_tmp );
+		if ( ! rename( $tmp, $zip_tmp ) ) {
+			@unlink( $tmp );
+			return new \WP_Error( 'rename_failed', 'Could not prepare downloaded zip file.' );
+		}
 
 		return $zip_tmp;
 	}
@@ -590,7 +593,7 @@ class GithubApi {
 
 		$code = wp_remote_retrieve_response_code( $response );
 
-		if ( $code === 301 || $code === 302 ) {
+		if ( in_array( $code, [ 301, 302, 307, 308 ], true ) ) {
 			$location = wp_remote_retrieve_header( $response, 'location' );
 			if ( $location ) {
 				return $location;
@@ -603,9 +606,12 @@ class GithubApi {
 			if ( empty( $body ) ) {
 				return new \WP_Error( 'empty_body', 'GitHub returned empty body.' );
 			}
-			$tmp = wp_tempnam( 'wpte-dz-gh' ) . '.zip';
-			file_put_contents( $tmp, $body );
-			return 'local:' . $tmp;
+			$tmp = wp_tempnam( 'wpte-dz-gh-zip' );
+			$zip = $tmp . '.zip';
+			// wp_tempnam creates an empty placeholder; write the real content to the .zip path.
+			file_put_contents( $zip, $body );
+			@unlink( $tmp );
+			return 'local:' . $zip;
 		}
 
 		return new \WP_Error( 'resolve_failed', "GitHub returned HTTP {$code} for asset URL." );
