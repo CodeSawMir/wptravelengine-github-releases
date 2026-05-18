@@ -1,0 +1,1473 @@
+/* ==========================================================================
+   WPTE DevZone – GitHub Tab Styles
+   Relies on DevZone CSS (--dbg-* vars, wte-dbg-* classes) for common patterns.
+   Only contains GitHub-specific layout and overrides not covered by DevZone.
+   ========================================================================== */
+
+#wpte-dz-github-root {
+	font-size: 14px;
+	color:     var(--dbg-text);
+	background: var(--dbg-bg);
+	min-height: 60vh;
+	box-sizing: border-box;
+}
+
+#wpte-dz-github-root * { box-sizing: border-box; }
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-body {
+	max-width: 1200px;
+	margin:    0 auto;
+	padding:   20px 24px;
+}
+
+/* ── Connect screen ──────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-connect {
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	min-height:      60vh;
+	padding:         40px 20px;
+}
+
+#wpte-dz-github-root .gh-connect-card {
+	background:    var(--dbg-surface);
+	border:        1px solid var(--dbg-border);
+	border-radius: 16px;
+	box-shadow:    0 4px 24px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.07);
+	padding:       48px 44px 40px;
+	width:         100%;
+	max-width:     440px;
+	text-align:    center;
+}
+
+#wpte-dz-github-root .gh-connect__icon {
+	width:         64px;
+	height:        64px;
+	background:    linear-gradient(145deg, #1c1c1e, #2d2d30);
+	border-radius: 18px;
+	display:       flex;
+	align-items:   center;
+	justify-content: center;
+	margin:        0 auto 24px;
+	color:         #e6edf3;
+	box-shadow:    0 4px 12px rgba(0,0,0,.25), 0 1px 3px rgba(0,0,0,.15),
+	               inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+#wpte-dz-github-root .gh-connect__header h2 {
+	font-size:      22px;
+	font-weight:    700;
+	color:          var(--dbg-text);
+	letter-spacing: -0.3px;
+	margin:         0 0 10px;
+}
+
+#wpte-dz-github-root .gh-connect__header p {
+	font-size:   13.5px;
+	color:       var(--dbg-text-muted);
+	margin:      0 0 24px;
+	line-height: 1.5;
+}
+
+#wpte-dz-github-root .gh-connect__header p code {
+	background:    var(--dbg-surface-alt);
+	border:        1px solid var(--dbg-border);
+	border-radius: 20px;
+	padding:       1px 8px;
+	font-size:     12px;
+}
+
+#wpte-dz-github-root .gh-token-form { text-align: left; }
+
+#wpte-dz-github-root .gh-token-form label {
+	display:        block;
+	font-size:      12px;
+	font-weight:    600;
+	color:          var(--dbg-text-muted);
+	margin-bottom:  6px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* Input with prefix icon wrapper */
+#wpte-dz-github-root .gh-input-wrap {
+	position:      relative;
+	display:       flex;
+	align-items:   center;
+	margin-bottom: 12px;
+}
+
+#wpte-dz-github-root .gh-input-prefix-icon {
+	position:       absolute;
+	left:           13px;
+	top:            50%;
+	transform:      translateY(-50%);
+	color:          var(--dbg-text-muted);
+	pointer-events: none;
+}
+
+/* Token input — neutral style (wte-dbg-input is always-on accent, not ideal here) */
+#wpte-dz-github-root .gh-token-input {
+	width:       100%;
+	height:      44px;
+	padding:     0 12px 0 38px;
+	font-size:   13.5px;
+	font-family: 'SFMono-Regular', Consolas, monospace;
+	border:      1.5px solid var(--dbg-border);
+	border-radius: 8px;
+	background:  var(--dbg-surface);
+	color:       var(--dbg-text);
+	box-shadow:  inset 0 1px 2px rgba(0,0,0,.04);
+	transition:  border-color 0.15s, box-shadow 0.15s;
+	outline:     none;
+}
+
+#wpte-dz-github-root .gh-token-input:focus {
+	border-color: var(--dbg-accent);
+	box-shadow:   0 0 0 3px rgba(34,113,177,.10), inset 0 1px 2px rgba(0,0,0,.03);
+}
+
+/* Token error — hidden initially, shown by JS */
+#wpte-dz-github-root #gh-token-error {
+	display:       none;
+	margin-bottom: 12px;
+	border-radius: 6px;
+	text-align:    left;
+}
+
+/* Large connect button */
+#wpte-dz-github-root .gh-btn--connect {
+	width:       100%;
+	padding:     13px 20px;
+	background:  linear-gradient(160deg, #2563eb, #1d4ed8 60%, #1e40af);
+	color:       #fff;
+	border:      none;
+	border-radius: 10px;
+	font-size:   14.5px;
+	font-weight: 600;
+	cursor:      pointer;
+	display:     flex;
+	align-items: center;
+	justify-content: center;
+	gap:         8px;
+	box-shadow:  0 2px 8px rgba(37,99,235,.35), inset 0 1px 0 rgba(255,255,255,.12);
+	transition:  transform 0.15s, box-shadow 0.15s;
+	margin-bottom: 12px;
+}
+
+#wpte-dz-github-root .gh-btn--connect:hover:not(:disabled) {
+	transform:  translateY(-1px);
+	box-shadow: 0 4px 14px rgba(37,99,235,.45), inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+#wpte-dz-github-root .gh-btn--connect:active { transform: translateY(0); }
+
+#wpte-dz-github-root .gh-btn--connect:disabled {
+	opacity:   0.65;
+	cursor:    default;
+	transform: none;
+}
+
+#wpte-dz-github-root .gh-connect__hint {
+	font-size:  11.5px;
+	color:      var(--dbg-text-dim);
+	text-align: center;
+	margin:     0;
+	opacity:    0.75;
+}
+
+/* ── Inline spinner (button loading state) ───────────────────────────────── */
+#wpte-dz-github-root .gh-spinner {
+	display:        inline-block;
+	width:          12px;
+	height:         12px;
+	border:         2px solid rgba(255,255,255,.3);
+	border-top-color: #fff;
+	border-radius:  50%;
+	animation:      wte-dbg-spin 0.8s linear infinite;
+	vertical-align: middle;
+}
+
+/* ── Hide nav bar on connect screen (no subtabs needed) ─────────────────── */
+.wte-dbg-tabs.gh-nav-hidden { display: none !important; }
+
+/* ── Nav bar inject: fills remaining bar width ───────────────────────────── */
+.wte-dbg-nav-inject[data-group="github"] {
+	flex:        1;
+	display:     flex;
+	align-items: stretch;
+	min-width:   0;
+	overflow:    hidden;
+}
+
+#gh-toolbar-inject {
+	flex:        1;
+	display:     flex;
+	align-items: stretch;
+	min-width:   0;
+}
+
+/* ── Toolbar layout ──────────────────────────────────────────────────────── */
+#gh-toolbar-inject .gh-toolbar {
+	flex:        1;
+	display:     flex;
+	align-items: center;   /* vertically center all toolbar items */
+	gap:         0;
+	min-width:   0;
+	padding:     6px 0;    /* breathing room so search pill doesn't touch bar edges */
+	height: 41px;
+}
+
+/* Vertical separator */
+#gh-toolbar-inject .gh-toolbar-sep {
+	width:       1px;
+	align-self:  center;
+	height:      16px;
+	background:  rgba(255,255,255,.15);
+	flex-shrink: 0;
+	margin:      0 6px;
+}
+
+/* ── Tab buttons — stretch to full toolbar height for active underline ────── */
+#gh-toolbar-inject .gh-tabs {
+	display:     flex;
+	align-items: stretch;
+	align-self:  stretch;  /* override parent's align-items: center */
+	flex-shrink: 0;
+}
+
+#gh-toolbar-inject .gh-tab {
+	padding:        0 15px;
+	font-size:      11px;
+	font-weight:    600;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	border:         none;
+	border-radius:  0;
+	background:     transparent;
+	color:          rgba(255,255,255,.45);
+	cursor:         pointer;
+	display:        flex;
+	align-items:    center;
+	gap:            6px;
+	white-space:    nowrap;
+	transition:     color 0.15s, background 0.15s;
+}
+
+#gh-toolbar-inject .gh-tab:hover {
+	color:      rgba(255,255,255,.82);
+	background: rgba(255,255,255,.05);
+}
+
+#gh-toolbar-inject .gh-tab.is-active {
+	color:      #fff;
+	box-shadow: inset 0 -2px 0 rgba(255,255,255,.85);
+}
+
+/* Count badge — ghost style for dark bar */
+#gh-toolbar-inject .wte-dbg-count-badge {
+	background:  rgba(255,255,255,.12);
+	border-color: rgba(255,255,255,.18);
+	color:        rgba(255,255,255,.65);
+	font-size:    9.5px;
+}
+
+#gh-toolbar-inject .gh-tab.is-active .wte-dbg-count-badge {
+	background:   rgba(255,255,255,.2);
+	border-color: rgba(255,255,255,.32);
+	color:        rgba(255,255,255,.92);
+}
+
+#tab-count-all:empty    { display: none; }
+#tab-count-issues:empty { display: none; }
+#gh-search-count:empty  { display: none; }
+
+/* ── Search wrap: zero out devzone's 7px margin to keep bar at 44px ─────── */
+#gh-toolbar-inject .wte-dbg-search-wrap {
+	margin:     0 4px 0 8px;
+	flex:       0 1 260px;
+	align-self: center;
+}
+
+/* ── Search input: let devzone dark-bar styles handle border + bg;
+   only tweak hover/focus to be slightly brighter than the base ─────────── */
+#gh-toolbar-inject .wte-dbg-search-input:hover {
+	border-color:     rgba(255,255,255,.3);
+	background-color: rgba(255,255,255,.12);
+}
+#gh-toolbar-inject .wte-dbg-search-input:focus {
+	border-color:     rgba(255,255,255,.45);
+	background-color: rgba(255,255,255,.15);
+	box-shadow:       0 0 0 3px rgba(255,255,255,.07);
+}
+
+/* ── Search count: vertically centered + brighter badge to match cron style ─ */
+#gh-toolbar-inject .wte-dbg-search-count {
+	margin-right: 8px;
+	top:        50%;
+	transform:  translateY(-50%);
+	background: rgba(255,255,255,.18);
+	color:      rgba(255,255,255,.9);
+	opacity:    1;
+}
+
+/* ── Refresh button: vertically centered, with left gap from search ──────── */
+#gh-toolbar-inject .wte-dbg-refresh-btn {
+	align-self: center;
+	margin:     0 4px;
+}
+
+/* ── Status note: flows inline, margin-left:auto pushes user-info right ──── */
+#gh-toolbar-inject .wte-dbg-status-note-wrap {
+	margin-left: auto;
+	padding:     0;
+}
+
+/* ── User identity — right end of toolbar ───────────────────────────────── */
+#gh-toolbar-inject .gh-user-info {
+	display:     flex;
+	align-items: center;
+	gap:         8px;
+	margin-left: auto;
+	padding:     0 6px 0 10px;
+	flex-shrink: 0;
+	border-left: 1px solid rgba(255,255,255,.12);
+}
+
+#gh-toolbar-inject .gh-user-avatar {
+	width:         26px;
+	height:        26px;
+	border-radius: 50%;
+	border:        1.5px solid rgba(255,255,255,.3);
+	flex-shrink:   0;
+	display:       block;
+}
+
+#gh-toolbar-inject .gh-user-name {
+	font-size:      11.5px;
+	font-weight:    600;
+	color:          rgba(255,255,255,.88);
+	white-space:    nowrap;
+	letter-spacing: 0.01em;
+}
+
+/* Icon-only circular disconnect button */
+#gh-toolbar-inject .gh-disconnect-btn {
+	width:          26px;
+	height:         26px;
+	border-radius:  50%;
+	padding:        0;
+	border:         1px solid rgba(255,255,255,.18);
+	background:     rgba(255,255,255,.07);
+	color:          rgba(255,255,255,.5);
+	cursor:         pointer;
+	display:        inline-flex;
+	align-items:    center;
+	justify-content: center;
+	flex-shrink:    0;
+	transition:     background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+#gh-toolbar-inject .gh-disconnect-btn:hover {
+	background:   rgba(239,68,68,.18);
+	border-color: rgba(239,68,68,.5);
+	color:        #fca5a5;
+}
+
+/* ── Idle / load prompt ───────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-idle-state {
+	display:         flex;
+	flex-direction:  column;
+	align-items:     center;
+	justify-content: center;
+	gap:             14px;
+	min-height:      40vh;
+	color:           var(--dbg-muted);
+	text-align:      center;
+}
+
+#wpte-dz-github-root .gh-idle-state svg {
+	opacity: 0.35;
+}
+
+#wpte-dz-github-root .gh-idle-state p {
+	margin:    0;
+	font-size: 13px;
+}
+
+#wpte-dz-github-root .gh-btn--load-repos {
+	display:       inline-flex;
+	align-items:   center;
+	gap:           6px;
+	padding:       7px 18px;
+	border-radius: 6px;
+	border:        1px solid var(--dbg-accent);
+	background:    transparent;
+	color:         var(--dbg-accent);
+	font-size:     13px;
+	font-weight:   600;
+	cursor:        pointer;
+	transition:    background 0.15s, color 0.15s;
+}
+
+#wpte-dz-github-root .gh-btn--load-repos:hover {
+	background: var(--dbg-accent);
+	color:      #fff;
+}
+
+/* ── Repo cards grid ──────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-grid-wrap { padding: 16px 20px; }
+
+#wpte-dz-github-root .gh-grid {
+	display:               grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap:                   8px;
+	align-items:           start;
+}
+
+/* ── Repo card ────────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-card {
+	background:    var(--dbg-surface);
+	border:        1px solid var(--dbg-border);
+	border-radius: 10px;
+	overflow:      hidden;
+	animation:     gh-fadein 0.2s ease both;
+	transition:    border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+	position:      relative;
+}
+
+#wpte-dz-github-root .gh-card::before {
+	content:       '';
+	position:      absolute;
+	inset-block:   0;
+	left:          0;
+	width:         3px;
+	background:    linear-gradient(180deg, var(--dbg-accent), rgba(99,179,237,.3));
+	opacity:       0;
+	border-radius: 10px 0 0 10px;
+	transition:    opacity 0.18s;
+}
+
+#wpte-dz-github-root .gh-card:hover {
+	border-color: var(--dbg-border-active, rgba(99,179,237,.5));
+	box-shadow:   0 4px 16px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
+	transform:    translateY(-1px);
+}
+
+#wpte-dz-github-root .gh-card:hover::before,
+#wpte-dz-github-root .gh-card.is-open::before { opacity: 1; }
+
+#wpte-dz-github-root .gh-card.gh-card--private::before {
+	background: linear-gradient(180deg, #d4a72c, rgba(212,167,44,.3));
+}
+
+#wpte-dz-github-root .gh-card.is-open {
+	border-color: var(--dbg-border-active, rgba(99,179,237,.6));
+	box-shadow:   0 6px 24px rgba(0,0,0,.12), 0 1px 4px rgba(0,0,0,.06);
+	transform:    none;
+}
+
+@keyframes gh-fadein {
+	from { opacity: 0; transform: translateY(6px); }
+	to   { opacity: 1; transform: none; }
+}
+
+/* ── Card head ────────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-card__head {
+	display:     flex;
+	align-items: center;
+	gap:         12px;
+	padding:     14px 14px 14px 16px;
+	cursor:      pointer;
+	user-select: none;
+	transition:  background 0.12s;
+}
+
+#wpte-dz-github-root .gh-card__head:hover { background: var(--dbg-hover-bg); }
+
+/* ── Avatar ───────────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-card__avatar {
+	min-width:       44px;
+	height:          38px;
+	padding:         0 7px;
+	border-radius:   9px;
+	background:      linear-gradient(135deg, var(--dbg-accent) 0%, rgba(59,130,246,.55) 100%);
+	color:           #fff;
+	font-size:       10px;
+	font-weight:     700;
+	letter-spacing:  0.06em;
+	font-family:     'SFMono-Regular', Consolas, monospace;
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	flex-shrink:     0;
+	white-space:     nowrap;
+	box-shadow:      0 2px 8px rgba(99,179,237,.25);
+}
+
+#wpte-dz-github-root .gh-card--private .gh-card__avatar {
+	background: linear-gradient(135deg, #d4a72c 0%, rgba(245,158,11,.55) 100%);
+	box-shadow: 0 2px 8px rgba(212,167,44,.25);
+}
+
+/* ── Card info ────────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-card__info { flex: 1; min-width: 0; }
+
+#wpte-dz-github-root .gh-card__title {
+	display:       flex;
+	align-items:   baseline;
+	gap:           3px;
+	flex-wrap:     wrap;
+	margin-bottom: 3px;
+}
+
+
+#wpte-dz-github-root .gh-card__name {
+	font-size:   13.5px;
+	font-weight: 600;
+	color:       var(--dbg-text);
+}
+
+#wpte-dz-github-root .gh-card__private-badge {
+	font-size:      10px;
+	font-weight:    600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color:          #d4a72c;
+	background:     rgba(212,167,44,.08);
+	border:         1px solid rgba(212,167,44,.35);
+	border-radius:  4px;
+	padding:        1px 6px;
+	line-height:    1.6;
+	align-self:     center;
+}
+
+
+/* ── Meta row: language · stars · forks · date ─────────────────────────────── */
+#wpte-dz-github-root .gh-card__meta {
+	display:     flex;
+	align-items: center;
+	gap:         10px;
+	flex-wrap:   wrap;
+	margin-top:  2px;
+}
+
+#wpte-dz-github-root .gh-card__lang,
+#wpte-dz-github-root .gh-card__meta-item {
+	display:     flex;
+	align-items: center;
+	gap:         4px;
+	font-size:   11px;
+	color:       var(--dbg-text-muted);
+}
+
+#wpte-dz-github-root .gh-card__lang {
+	background:    rgba(99,179,237,.07);
+	border:        1px solid rgba(99,179,237,.15);
+	border-radius: 20px;
+	padding:       1px 7px 1px 5px;
+}
+
+#wpte-dz-github-root .gh-card__lang-dot {
+	width:         9px;
+	height:        9px;
+	border-radius: 50%;
+	flex-shrink:   0;
+}
+
+#wpte-dz-github-root .gh-card__meta-item svg { opacity: .6; }
+
+#wpte-dz-github-root .gh-card__updated { color: var(--dbg-text-dim); }
+
+/* ── Actions ──────────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-card__actions {
+	display:     flex;
+	align-items: center;
+	gap:         2px;
+	flex-shrink: 0;
+	margin-left: 4px;
+}
+
+#wpte-dz-github-root .gh-fav-btn {
+	background:    none;
+	border:        none;
+	cursor:        pointer;
+	padding:       5px;
+	border-radius: 6px;
+	color:         var(--dbg-text-dim);
+	opacity:       0;
+	transition:    opacity 0.12s, color 0.12s, background 0.12s;
+	line-height:   1;
+}
+
+#wpte-dz-github-root .gh-card__head:hover .gh-fav-btn,
+#wpte-dz-github-root .gh-fav-btn.is-fav { opacity: 1; }
+
+#wpte-dz-github-root .gh-fav-btn:hover  { background: rgba(212,167,44,.12); color: #d4a72c; }
+#wpte-dz-github-root .gh-fav-btn.is-fav { color: #d4a72c; }
+#wpte-dz-github-root .gh-fav-btn svg    { fill: currentColor; display: block; }
+
+#wpte-dz-github-root .gh-card__expand-btn {
+	background:      none;
+	border:          none;
+	cursor:          pointer;
+	padding:         5px;
+	border-radius:   6px;
+	color:           var(--dbg-text-dim);
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	transition:      background 0.12s, color 0.12s;
+}
+
+#wpte-dz-github-root .gh-card__expand-btn:hover { background: var(--dbg-hover-bg); color: var(--dbg-text); }
+
+#wpte-dz-github-root .gh-card__chevron { transition: transform 0.22s ease; display: block; }
+
+#wpte-dz-github-root .gh-card.is-open .gh-card__chevron { transform: rotate(180deg); }
+
+/* Releases panel — hide when card is closed */
+#wpte-dz-github-root .gh-card:not(.is-open) .gh-releases { display: none; }
+
+/* ── Release tag search ───────────────────────────────────────────────────── */
+/* ── Release toolbar: search + pagination in one row ─────────────────────── */
+#wpte-dz-github-root .gh-releases-toolbar {
+	display:       flex;
+	align-items:   center;
+	gap:           12px;
+	padding:       10px 14px;
+	border-bottom: 1px solid var(--dbg-border-faint);
+	background:    var(--dbg-bg);
+}
+
+#wpte-dz-github-root .gh-releases-search {
+	flex:    1;
+	padding: 0;
+	border:  none;
+	background: transparent;
+}
+
+#wpte-dz-github-root .gh-releases-search .wte-dbg-search-wrap {
+	max-width: 100%;
+	width:     100%;
+}
+
+/* Override devzone input to pill style matching the screenshot */
+#wpte-dz-github-root .gh-releases-search .wte-dbg-search-input {
+	height:           40px;
+	border-radius:    999px;
+	border:           1.5px solid var(--dbg-border);
+	background-color: var(--dbg-surface);
+	font-size:        13px;
+	padding-left:     38px;
+	padding-right:    80px;
+	width:            100%;
+	transition:       border-color 0.15s, box-shadow 0.15s;
+}
+
+#wpte-dz-github-root .gh-releases-search .wte-dbg-search-input:focus {
+	border-color: var(--dbg-accent);
+	box-shadow:   0 0 0 3px rgba(99,179,237,.12);
+	outline:      none;
+}
+
+/* Count badge — pill on the right inside the search bar */
+#wpte-dz-github-root .gh-releases-search .wte-dbg-search-count {
+	right:         18px;
+	height:        26px;
+	padding:       0 10px;
+	border-radius: 999px;
+	font-size:     11.5px;
+	font-weight:   600;
+	background:    rgba(99,179,237,.12);
+	color:         var(--dbg-accent);
+}
+
+/* ── Pagination (inline in toolbar) ───────────────────────────────────────── */
+#wpte-dz-github-root .gh-releases-pagination.wte-dbg-pagination {
+	border:          none;
+	padding:         0;
+	justify-content: flex-start;
+	flex-wrap:       wrap;
+	flex-shrink:     0;
+	gap:             4px;
+}
+
+#wpte-dz-github-root .gh-releases-pagination:empty { display: none; }
+
+#wpte-dz-github-root .gh-releases-pagination .wte-dbg-page-btn {
+	min-width:       28px;
+	height:          28px;
+	padding:         0 8px;
+	border-radius:   6px;
+	font-size:       13px;
+	font-weight:     600;
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	transition:      background 0.12s, border-color 0.12s, color 0.12s;
+	color:           var(--dbg-accent);
+	border-color:    var(--dbg-border);
+}
+
+#wpte-dz-github-root .gh-releases-pagination .wte-dbg-page-btn:hover:not(:disabled) {
+	background:   var(--dbg-hover-bg);
+	border-color: var(--dbg-border-active, rgba(99,179,237,.4));
+}
+
+#wpte-dz-github-root .gh-page-indicator {
+	font-size:   12px;
+	font-weight: 600;
+	color:       var(--dbg-text-muted);
+	padding:     0 4px;
+	white-space: nowrap;
+}
+
+/* Releases panel uses wte-dbg-section-body but flush (no outer margin) */
+#wpte-dz-github-root .gh-releases.wte-dbg-section-body {
+	margin:        0;
+	border:        none;
+	border-top:    1px solid var(--dbg-border-faint);
+	border-radius: 0;
+}
+
+/* ── Release rows ─────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-release {
+	display:     flex;
+	align-items: center;
+	flex-wrap:   wrap;
+	gap:         8px;
+	padding:     9px 14px;
+	border-bottom: 1px solid var(--dbg-border-faint);
+	font-size:   12.5px;
+	transition:  background 0.12s;
+}
+
+#wpte-dz-github-root .gh-release:hover { background: var(--dbg-hover-bg); }
+
+#wpte-dz-github-root .gh-release:last-child { border-bottom: none; }
+
+#wpte-dz-github-root .gh-release__tag {
+	display:     inline-flex;
+	align-items: center;
+	gap:         5px;
+	flex:        1;
+	min-width:   0;
+}
+
+#wpte-dz-github-root .gh-release__tag-label {
+	font-family:   'SFMono-Regular', Consolas, monospace;
+	font-size:     11px;
+	font-weight:   600;
+	color:         var(--dbg-accent);
+	background:    rgba(99,179,237,.1);
+	border:        1px solid rgba(99,179,237,.25);
+	border-radius: 5px;
+	padding:       2px 8px;
+	white-space:   nowrap;
+}
+
+#wpte-dz-github-root .gh-release__date {
+	font-size:   11px;
+	color:       var(--dbg-text-dim);
+	white-space: nowrap;
+	background:  var(--dbg-bg);
+	border:      1px solid var(--dbg-border-faint);
+	border-radius: 4px;
+	padding:     1px 6px;
+}
+
+#wpte-dz-github-root .gh-release__right {
+	display:     flex;
+	align-items: center;
+	gap:         6px;
+	flex-shrink: 0;
+}
+
+/* Install button: use wte-dbg-cron-run-btn but remove the play triangle ::before */
+#wpte-dz-github-root .wte-dbg-cron-run-btn.gh-install-btn::before { content: none; }
+#wpte-dz-github-root .wte-dbg-cron-run-btn.gh-install-btn { padding: 4px 10px; font-size: 11.5px; }
+
+/* Activate / cancel in release rows — reset left margin added by DevZone */
+#wpte-dz-github-root .gh-release .wte-dbg-save,
+#wpte-dz-github-root .gh-release .wte-dbg-cancel { margin-left: 0; }
+
+
+/* ── Post-install area ────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-release__post-install {
+	width:       100%;
+	display:     none;
+	align-items: center;
+	gap:         8px;
+	font-size:   12px;
+}
+
+#wpte-dz-github-root .gh-release__post-install.is-visible { display: flex; }
+
+#wpte-dz-github-root .gh-release__result {
+	display:     flex;
+	align-items: center;
+	gap:         4px;
+	font-weight: 500;
+}
+
+#wpte-dz-github-root .gh-release__result.ok  { color: #1a7a40; }
+#wpte-dz-github-root .gh-release__result.err { color: #8a1f1f; }
+
+/* Error notice dark mode — devzone.css has no dark override for this class */
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .wte-dbg-error-notice {
+	background: rgba( 248, 81, 73, 0.12 );
+	color: #f87171;
+}
+
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-release__result.ok  { color: #3fb950; }
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-release__result.err { color: #f85149; }
+
+/* ── Favourites empty state ───────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-fav-empty {
+	padding:    40px 20px;
+	text-align: center;
+	color:      var(--dbg-text-dim);
+}
+
+#wpte-dz-github-root .gh-fav-empty svg {
+	display:     block;
+	margin:      0 auto 12px;
+	opacity:     0.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ISSUES TAB
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Issues list container ─────────────────────────────────────────────────── */
+/* ── Issues org grouping ───────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-issues-org {
+	display:        flex;
+	flex-direction: column;
+	gap:            10px;
+}
+
+#wpte-dz-github-root .gh-issues-org + .gh-issues-org {
+	margin-top: 6px;
+}
+
+#wpte-dz-github-root .gh-issues-org__header {
+	display:     flex;
+	align-items: center;
+	gap:         7px;
+	padding:     10px 20px 2px;
+	color:       var(--dbg-text-dim);
+	font-size:   12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .05em;
+}
+
+#wpte-dz-github-root .gh-issues-org__header svg {
+	flex-shrink: 0;
+	color:       var(--dbg-accent);
+}
+
+#wpte-dz-github-root .gh-issues-org__count {
+	margin-left:   4px;
+	background:    var(--dbg-surface-alt);
+	border:        1px solid var(--dbg-border);
+	border-radius: 20px;
+	padding:       1px 7px;
+	font-size:     11px;
+	font-weight:   600;
+	color:         var(--dbg-text-dim);
+}
+
+/* ── Issues skeleton loader ────────────────────────────────────────────────── */
+@keyframes gh-shimmer {
+	0%   { background-position: -400px 0; }
+	100% { background-position:  400px 0; }
+}
+
+#wpte-dz-github-root .gh-skeleton-grid {
+	display:               grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap:                   10px;
+	padding:               16px 20px;
+}
+
+#wpte-dz-github-root .gh-skeleton-card {
+	background:    var(--dbg-surface);
+	border:        1px solid var(--dbg-border);
+	border-radius: 10px;
+	padding:       14px 16px;
+	display:       flex;
+	flex-direction: column;
+	gap:           10px;
+}
+
+#wpte-dz-github-root .gh-skel {
+	display:    block;
+	border-radius: 5px;
+	background: linear-gradient(
+		90deg,
+		var(--dbg-border) 25%,
+		var(--dbg-surface-alt) 50%,
+		var(--dbg-border) 75%
+	);
+	background-size: 400px 100%;
+	animation: gh-shimmer 1.4s ease-in-out infinite;
+}
+
+#wpte-dz-github-root .gh-skeleton-meta {
+	display:     flex;
+	align-items: center;
+	gap:         8px;
+}
+
+#wpte-dz-github-root .gh-skel--repo   { height: 11px; width: 45%; }
+#wpte-dz-github-root .gh-skel--badge  { height: 16px; width: 46px; border-radius: 20px; }
+#wpte-dz-github-root .gh-skel--title  { height: 14px; width: 80%; }
+#wpte-dz-github-root .gh-skel--line   { height: 11px; width: 100%; }
+#wpte-dz-github-root .gh-skel--short  { width: 60%; }
+
+#wpte-dz-github-root .gh-skeleton-footer {
+	display: flex;
+	gap:     8px;
+	margin-top: 2px;
+}
+
+#wpte-dz-github-root .gh-skel--chip   { height: 11px; width: 52px; }
+
+/* ── Issues welcome / empty state ─────────────────────────────────────────── */
+#wpte-dz-github-root .gh-issues-welcome {
+	display:         flex;
+	flex-direction:  column;
+	align-items:     center;
+	text-align:      center;
+	padding:         48px 24px 40px;
+	gap:             12px;
+	animation:       gh-fadein 0.2s ease both;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__icon {
+	width:      56px;
+	height:     56px;
+	border-radius: 50%;
+	background: var(--dbg-surface-alt);
+	border:     1px solid var(--dbg-border);
+	display:    flex;
+	align-items: center;
+	justify-content: center;
+	color:      var(--dbg-accent);
+	margin-bottom: 4px;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__icon svg {
+	width:  26px;
+	height: 26px;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__title {
+	margin:      0;
+	font-size:   16px;
+	font-weight: 600;
+	color:       var(--dbg-text);
+	line-height: 1.3;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__desc {
+	margin:      0;
+	font-size:   13px;
+	color:       var(--dbg-text-dim);
+	max-width:   380px;
+	line-height: 1.6;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__hints {
+	display:        flex;
+	flex-direction: column;
+	gap:            8px;
+	width:          100%;
+	max-width:      420px;
+	margin-top:     4px;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__hint {
+	display:       flex;
+	align-items:   center;
+	gap:           10px;
+	background:    var(--dbg-surface-alt);
+	border:        1px solid var(--dbg-border);
+	border-radius: 8px;
+	padding:       9px 14px;
+	text-align:    left;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__hint-label {
+	font-size:    10px;
+	font-weight:  700;
+	text-transform: uppercase;
+	letter-spacing: .06em;
+	color:        var(--dbg-accent);
+	flex-shrink:  0;
+	min-width:    52px;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__hint-code {
+	font-size:   12px;
+	color:       var(--dbg-text-dim);
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	background:  transparent;
+	padding:     0;
+	white-space: nowrap;
+	overflow:    hidden;
+	text-overflow: ellipsis;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__tip {
+	margin:    0;
+	font-size: 11.5px;
+	color:     var(--dbg-text-faint, var(--dbg-text-dim));
+	margin-top: 2px;
+}
+
+#wpte-dz-github-root .gh-issues-welcome__tip kbd {
+	display:       inline-block;
+	padding:       1px 5px;
+	border:        1px solid var(--dbg-border);
+	border-radius: 4px;
+	font-size:     11px;
+	font-family:   inherit;
+	background:    var(--dbg-surface-alt);
+	color:         var(--dbg-text);
+	line-height:   1.5;
+}
+
+#wpte-dz-github-root .gh-issues-list {
+	padding: 16px 20px;
+	display: flex;
+	flex-direction: column;
+	gap:     10px;
+	align-items: center;
+}
+
+#wpte-dz-github-root .gh-issues-list--multi {
+	display:               grid;
+	grid-template-columns: repeat(2, 1fr);
+	align-items:           start;
+	flex-direction:        unset;
+}
+
+#wpte-dz-github-root .gh-issues-list--multi .gh-issue-card {
+	width: 100%;
+}
+
+/* ── GitHub links ──────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-link {
+	color:           inherit;
+	text-decoration: none;
+	border-bottom:   1px dashed transparent;
+	transition:      border-color 0.15s, color 0.15s;
+}
+
+#wpte-dz-github-root .gh-link:hover {
+	color:        var(--dbg-accent);
+	border-color: var(--dbg-accent);
+}
+
+/* ── Issue card ────────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-issue-card {
+	background:    var(--dbg-surface);
+	border:        1px solid var(--dbg-border);
+	border-radius: 10px;
+	overflow:      hidden;
+	animation:     gh-fadein 0.18s ease both;
+	transition:    border-color 0.15s, box-shadow 0.15s;
+	position:      relative;
+	width:         50%;
+}
+
+#wpte-dz-github-root .gh-issue-card.is-open .gh-issue-card__inner {
+	display:        flex;
+	flex-direction: column;
+	align-items:    center;
+}
+
+#wpte-dz-github-root .gh-issue-card::before {
+	content:       '';
+	position:      absolute;
+	inset-block:   0;
+	left:          0;
+	width:         3px;
+	background:    var(--dbg-accent);
+	opacity:       0;
+	border-radius: 10px 0 0 10px;
+	transition:    opacity 0.15s;
+}
+
+#wpte-dz-github-root .gh-issue-card:hover::before,
+#wpte-dz-github-root .gh-issue-card.is-open::before { opacity: 1; }
+
+#wpte-dz-github-root .gh-issue-card:hover {
+	border-color: var(--dbg-border-active, rgba(99,179,237,.45));
+	box-shadow:   0 2px 10px rgba(0,0,0,.08);
+}
+
+#wpte-dz-github-root .gh-issue-card.is-open {
+	border-color: var(--dbg-border-active, rgba(99,179,237,.55));
+	box-shadow:   0 3px 14px rgba(0,0,0,.1);
+}
+
+/* ── Issue card head ──────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-issue__head {
+	padding:     14px 16px;
+	cursor:      pointer;
+	user-select: none;
+	transition:  background 0.12s;
+}
+#wpte-dz-github-root .gh-issue__head:hover { background: var(--dbg-hover-bg); }
+
+#wpte-dz-github-root .gh-issue__meta-top {
+	display:       flex;
+	align-items:   center;
+	gap:           6px;
+	margin-bottom: 5px;
+	flex-wrap:     wrap;
+}
+
+#wpte-dz-github-root .gh-issue__repo {
+	font-size:  11px;
+	color:      var(--dbg-text-muted);
+	font-weight: 500;
+	white-space: normal;
+	word-break:  break-all;
+}
+
+#wpte-dz-github-root .gh-issue__number {
+	font-family: 'SFMono-Regular', Consolas, monospace;
+	font-size:   11px;
+	color:       var(--dbg-accent);
+	font-weight: 600;
+	flex-shrink: 0;
+}
+
+#wpte-dz-github-root .gh-issue__title {
+	font-size:   13px;
+	font-weight: 600;
+	color:       var(--dbg-text);
+	margin:      0 0 5px;
+	line-height: 1.4;
+}
+
+#wpte-dz-github-root .gh-issue__excerpt {
+	font-size:              11.5px;
+	color:                  var(--dbg-text-muted);
+	margin:                 0 0 6px;
+	display:                -webkit-box;
+	-webkit-line-clamp:     2;
+	-webkit-box-orient:     vertical;
+	overflow:               hidden;
+	line-height:            1.45;
+}
+
+#wpte-dz-github-root .gh-issue__footer {
+	display:     flex;
+	align-items: center;
+	gap:         12px;
+	margin-top:  6px;
+}
+
+#wpte-dz-github-root .gh-issue__comments,
+#wpte-dz-github-root .gh-issue__updated { font-size: 11px; color: var(--dbg-text-muted); }
+
+/* ── State badges (issue open/closed) ──────────────────────────────────────── */
+#wpte-dz-github-root .gh-state-badge {
+	font-size:      10px;
+	font-weight:    600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	border-radius:  3px;
+	padding:        2px 6px;
+	line-height:    1.5;
+}
+#wpte-dz-github-root .gh-state-badge.gh-state--open   { color: #1a7a40; border: 1px solid rgba(26,122,64,.35); }
+#wpte-dz-github-root .gh-state-badge.gh-state--closed { color: #7c3aed; border: 1px solid rgba(124,58,237,.35); }
+
+/* ── PR state badges ───────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-pr-state-badge {
+	font-size:      10px;
+	font-weight:    600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	border-radius:  3px;
+	padding:        2px 6px;
+	line-height:    1.5;
+	flex-shrink:    0;
+}
+#wpte-dz-github-root .gh-pr-state-badge.gh-pr-state--open   { color: #1a7a40; border: 1px solid rgba(26,122,64,.35); }
+#wpte-dz-github-root .gh-pr-state-badge.gh-pr-state--closed { color: #8a1f1f; border: 1px solid rgba(138,31,31,.35); }
+#wpte-dz-github-root .gh-pr-state-badge.gh-pr-state--merged { color: #7c3aed; border: 1px solid rgba(124,58,237,.35); }
+
+/* ── Issue PRs panel ──────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-issue-card:not(.is-open) .gh-issue__prs { display: none; }
+
+#wpte-dz-github-root .gh-issue__head {
+	width: 100%;
+}
+
+#wpte-dz-github-root .gh-issue__prs {
+	position:     relative;
+	width:        100%;
+	background:   var(--dbg-surface-alt);
+	border-top:   2px solid var(--dbg-accent);
+	box-shadow:   inset 0 3px 10px rgba(0,0,0,.04);
+}
+
+/* Arrow separator — rotated square straddling the top border, tip pointing down */
+#wpte-dz-github-root .gh-issue-card.is-open .gh-issue__prs::before {
+	content:       '';
+	position:      absolute;
+	top:           -8px;
+	left:          50%;
+	width:         13px;
+	height:        13px;
+	background:    var(--dbg-surface-alt);
+	border-top:    1px solid var(--dbg-accent);
+	border-right:  1px solid var(--dbg-accent);
+	transform:     translateX(-50%) rotate(135deg);
+	z-index:       2;
+}
+
+/* ── PR rows ───────────────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-pr-row {
+	border-bottom: 1px solid var(--dbg-border-faint);
+	overflow:      hidden;
+}
+#wpte-dz-github-root .gh-pr-row:last-child { border-bottom: none; }
+
+#wpte-dz-github-root .gh-pr__head {
+	display:     flex;
+	align-items: center;
+	gap:         8px;
+	padding:     9px 14px 9px 20px;
+	cursor:      pointer;
+	user-select: none;
+	flex-wrap:   wrap;
+	transition:  background 0.12s;
+}
+#wpte-dz-github-root .gh-pr__head:hover { background: var(--dbg-hover-bg); }
+
+#wpte-dz-github-root .gh-pr__number {
+	font-family: 'SFMono-Regular', Consolas, monospace;
+	font-size:   11px;
+	color:       var(--dbg-accent);
+	font-weight: 600;
+	flex-shrink: 0;
+}
+
+
+#wpte-dz-github-root .gh-pr__branch {
+	display:       inline-flex;
+	align-items:   center;
+	gap:           4px;
+	font-family:   'SFMono-Regular', Consolas, monospace;
+	font-size:     11px;
+	color:         var(--dbg-text-muted);
+	background:    var(--dbg-surface);
+	border:        1px solid var(--dbg-border-faint);
+	border-radius: 3px;
+	padding:       1px 6px;
+	flex-shrink:   0;
+	white-space:   nowrap;
+}
+
+
+/* ── PR releases panel ─────────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-pr-row:not(.is-open) .gh-pr__releases { display: none; }
+
+#wpte-dz-github-root .gh-pr__releases {
+	border-top:   1px solid var(--dbg-border-faint);
+	padding-left: 20px;
+	background:   var(--dbg-surface);
+}
+
+#wpte-dz-github-root .gh-branch-deleted-notice {
+	margin: 8px 0 4px;
+	padding: 5px 10px;
+	font-size: 11px;
+	color: var(--dbg-text-muted);
+	background: var(--dbg-surface-alt);
+	border: 1px solid var(--dbg-border);
+	border-radius: 5px;
+}
+#wpte-dz-github-root .gh-branch-deleted-notice code {
+	font-family: 'SFMono-Regular', Consolas, monospace;
+	font-size: 10px;
+}
+
+/* ── Repo sections (grouped by owner) ─────────────────────────────────────── */
+#wpte-dz-github-root .gh-sections {
+	display:        flex;
+	flex-direction: column;
+	gap:            0;
+}
+
+#wpte-dz-github-root .gh-section {
+	padding-top: 20px;
+}
+
+#wpte-dz-github-root .gh-section + .gh-section {
+	margin-top:  4px;
+	border-top:  2px solid var(--dbg-border);
+	padding-top: 22px;
+}
+
+#wpte-dz-github-root .gh-section__header {
+	display:       flex;
+	align-items:   center;
+	gap:           10px;
+	padding:       0 2px 10px;
+	margin-bottom: 8px;
+	border-bottom: 1px solid var(--dbg-border);
+	cursor:        pointer;
+}
+
+#wpte-dz-github-root .gh-section__toggle {
+	display:     flex;
+	align-items: center;
+	gap:         10px;
+	flex:        1;
+	min-width:   0;
+	background:  none;
+	border:      none;
+	cursor:      pointer;
+	text-align:  left;
+	color:       inherit;
+	font-family: inherit;
+	padding:     0;
+}
+
+#wpte-dz-github-root .gh-section__header:hover .gh-section__owner {
+	color: var(--dbg-accent);
+}
+
+#wpte-dz-github-root .gh-section__pagination {
+	flex-shrink: 0;
+	border:      none;
+	padding:     0;
+	margin:      0 8px;
+}
+
+#wpte-dz-github-root .gh-section__pagination .wte-dbg-page-btn {
+	cursor: pointer;
+}
+
+#wpte-dz-github-root .gh-section__pagination .wte-dbg-page-btn[aria-disabled="true"] {
+	opacity:        0.35;
+	cursor:         default;
+	pointer-events: none;
+}
+
+#wpte-dz-github-root .gh-section__avatar {
+	width:           24px;
+	height:          24px;
+	border-radius:   6px;
+	background:      linear-gradient(135deg, var(--dbg-accent) 0%, rgba(99,179,237,.4) 100%);
+	color:           #fff;
+	font-size:       10px;
+	font-weight:     700;
+	letter-spacing:  0.04em;
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	flex-shrink:     0;
+	opacity:         0.85;
+}
+
+#wpte-dz-github-root .gh-section__owner {
+	font-size:     13px;
+	font-weight:   600;
+	color:         var(--dbg-text);
+	white-space:   nowrap;
+	overflow:      hidden;
+	text-overflow: ellipsis;
+}
+
+#wpte-dz-github-root .gh-section__count {
+	display:       inline-flex;
+	align-items:   center;
+	font-size:     10px;
+	font-weight:   600;
+	color:         var(--dbg-text-muted);
+	background:    var(--dbg-surface-alt);
+	border:        1px solid var(--dbg-border);
+	border-radius: 20px;
+	padding:       1px 7px;
+	letter-spacing: 0.02em;
+	flex-shrink:   0;
+}
+
+#wpte-dz-github-root .gh-section__chevron {
+	margin-left: auto;
+	flex-shrink: 0;
+	color:       var(--dbg-muted);
+	transition:  transform 0.2s ease;
+}
+
+#wpte-dz-github-root .gh-section.is-collapsed .gh-section__pagination {
+	display: none;
+}
+
+#wpte-dz-github-root .gh-section.is-collapsed .gh-section__chevron {
+	transform: rotate(-90deg);
+}
+
+#wpte-dz-github-root .gh-section .gh-grid {
+	transition:     none;
+	padding-bottom: 4px;
+}
+
+#wpte-dz-github-root .gh-section.is-collapsed .gh-grid {
+	display: none;
+}
+
+#wpte-dz-github-root .gh-section.is-collapsed .gh-section__header {
+	margin-bottom: 0;
+	border-bottom-color: transparent;
+}
+
+/* ── Dark mode overrides ───────────────────────────────────────────────────── */
+
+/* State badges — lighter colours for dark surfaces */
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-state-badge.gh-state--open     { color: #3fb950; border-color: rgba(63,185,80,.35); }
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-state-badge.gh-state--closed   { color: #a78bfa; border-color: rgba(167,139,250,.35); }
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-pr-state-badge.gh-pr-state--open   { color: #3fb950; border-color: rgba(63,185,80,.35); }
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-pr-state-badge.gh-pr-state--closed { color: #f85149; border-color: rgba(248,81,73,.35); }
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-pr-state-badge.gh-pr-state--merged { color: #a78bfa; border-color: rgba(167,139,250,.35); }
+
+/* Issue cards — replace black box-shadows with white-tinted glow */
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-issue-card:hover {
+	box-shadow: 0 2px 10px rgba(0,0,0,.35), 0 0 0 1px rgba(126,184,247,.15);
+}
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-issue-card.is-open {
+	box-shadow: 0 3px 14px rgba(0,0,0,.45), 0 0 0 1px rgba(126,184,247,.22);
+}
+
+/* Issues welcome — dark mode */
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-issues-welcome__icon {
+	background: rgba(126,184,247,.08);
+	border-color: rgba(126,184,247,.2);
+}
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-issues-welcome__hint {
+	background:   rgba(255,255,255,.04);
+	border-color: rgba(255,255,255,.08);
+}
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-issues-welcome__tip kbd {
+	background:   rgba(255,255,255,.06);
+	border-color: rgba(255,255,255,.12);
+}
+
+/* Issue PRs panel — stronger inset shadow in dark mode */
+.wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .gh-issue__prs {
+	background: var(--dbg-surface);
+	box-shadow: inset 0 3px 12px rgba(0,0,0,.18);
+}
