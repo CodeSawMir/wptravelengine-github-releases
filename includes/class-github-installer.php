@@ -55,17 +55,9 @@ class GithubInstaller {
 		$source_dir = ! empty( $top_dirs ) ? trailingslashit( reset( $top_dirs ) ) : $stage_dir;
 
 		$zip_plugin_name = self::get_plugin_name_from_dir( $source_dir );
-		$zip_slug        = self::get_plugin_slug_from_dir( $source_dir );
 
 		$existing_slug = self::find_installed_slug_by_name( $zip_plugin_name );
-
-		if ( $existing_slug ) {
-			$final_slug = $existing_slug;
-		} elseif ( $zip_slug ) {
-			$final_slug = $zip_slug;
-		} else {
-			$final_slug = sanitize_title( $repo_name );
-		}
+		$final_slug    = $existing_slug ?: sanitize_title( $repo_name );
 
 		$plugin_dir = WP_PLUGIN_DIR . '/' . $final_slug;
 
@@ -103,17 +95,6 @@ class GithubInstaller {
 			$data = get_plugin_data( $file, false, false );
 			if ( ! empty( $data['Name'] ) ) {
 				return $data['Name'];
-			}
-		}
-		return '';
-	}
-
-	private static function get_plugin_slug_from_dir( string $dir ): string {
-		$files = glob( rtrim( $dir, '/' ) . '/*.php' ) ?: [];
-		foreach ( $files as $file ) {
-			$data = get_plugin_data( $file, false, false );
-			if ( ! empty( $data['Name'] ) ) {
-				return basename( $file, '.php' );
 			}
 		}
 		return '';
