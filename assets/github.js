@@ -783,14 +783,19 @@ function renderIssuesGrid() {
 
 	if ( searchCount ) searchCount.textContent = '';
 
+	var banner = downloadBannerHtml();
+
 	if ( ! state.issueSearch ) {
 		if ( countEl ) countEl.textContent = '';
-		wrap.innerHTML = issuesWelcomeHtml();
+		wrap.innerHTML = banner + issuesWelcomeHtml();
+		bindDownloadBanner( wrap );
+		bindIssuesWelcome( wrap );
 		return;
 	}
 	if ( state.issues.length === 0 ) {
 		if ( countEl ) countEl.textContent = '';
-		wrap.innerHTML = emptyStateHtml( 'No issues found.' );
+		wrap.innerHTML = banner + emptyStateHtml( 'No issues found.' );
+		bindDownloadBanner( wrap );
 		return;
 	}
 
@@ -817,7 +822,8 @@ function renderIssuesGrid() {
 			+ '<div class="gh-issues-list' + multiClass + '">' + cards + '</div>'
 			+ '</div>';
 	} );
-	wrap.innerHTML = '<div id="gh-issues-list">' + html + '</div>';
+	wrap.innerHTML = banner + '<div id="gh-issues-list">' + html + '</div>';
+	bindDownloadBanner( wrap );
 
 	document.querySelectorAll( '#gh-issues-list .gh-issue-card' ).forEach( function( card ) {
 		card.classList.add( 'is-open' );
@@ -1013,37 +1019,56 @@ function renderReleases( panel, releases, repoName, notice ) {
 		list.innerHTML = slice.map( function( r ) { return releaseRowHtml( r, repoName ); } ).join( '' );
 		bindReleaseRowEvents( list );
 
-		// Show search + pagination only when there is more than one page.
-		if ( totalPages <= 1 ) {
-			toolbar.style.display = 'none';
-			return;
-		}
+		// Inject search once when total releases exceed one page.
+		if ( ! input && releases.length > PAGE_SIZE ) {
+			var searchCount = document.createElement( 'span' );
+			searchCount.className = 'wte-dbg-search-count gh-releases-search__count';
 
-		// Inject search the first time pagination appears.
-		if ( ! input ) {
-			var searchHtml = '<div class="gh-releases-search"><div class="wte-dbg-search-wrap">'
-				+ '<input type="text" class="wte-dbg-search-input gh-releases-search__input" placeholder="Search tags\u2026" aria-label="Search tags">'
-				+ '<span class="wte-dbg-search-count gh-releases-search__count"></span>'
-				+ '</div></div>';
-			toolbar.insertAdjacentHTML( 'afterbegin', searchHtml );
-			input = toolbar.querySelector( '.gh-releases-search__input' );
+			input = document.createElement( 'input' );
+			input.type        = 'text';
+			input.className   = 'wte-dbg-search-input gh-releases-search__input';
+			input.placeholder = 'Search tags\u2026';
+			input.setAttribute( 'aria-label', 'Search tags' );
+
+			var searchWrap = document.createElement( 'div' );
+			searchWrap.className = 'wte-dbg-search-wrap';
+			searchWrap.appendChild( input );
+			searchWrap.appendChild( searchCount );
+
+			var searchBlock = document.createElement( 'div' );
+			searchBlock.className = 'gh-releases-search';
+			searchBlock.appendChild( searchWrap );
+
+			toolbar.insertBefore( searchBlock, toolbar.firstChild );
 			input.addEventListener( 'input', function() {
 				var q = input.value.trim().toLowerCase();
 				visible = ! q ? releases.slice() : releases.filter( function( r ) {
 					return ( r.tag || '' ).toLowerCase().indexOf( q ) !== -1
-						|| ( r.name || '' ).toLowerCase().indexOf( q ) !== -1;
+						|| ( r.name || '' ).toLowerCase().indexOf( q ) !== -1
+						|| ( r.branch || '' ).toLowerCase().indexOf( q ) !== -1;
 				} );
 				renderPage( 1 );
 			} );
 		}
 
-		toolbar.style.display = '';
-		toolbar.querySelector( '.gh-releases-search__count' ).textContent = total + ' tag' + ( total === 1 ? '' : 's' );
+		// Hide toolbar only when no search exists and single page \u2014 once search is injected, keep toolbar visible.
+		if ( ! input && totalPages <= 1 ) {
+			toolbar.style.display = 'none';
+			return;
+		}
 
-		pagination.innerHTML =
-			'<button class="wte-dbg-page-btn gh-page-prev"' + ( curPage === 1 ? ' disabled' : '' ) + '>\u2039</button>'
-			+ '<span class="gh-page-indicator">' + curPage + ' / ' + totalPages + '</span>'
-			+ '<button class="wte-dbg-page-btn gh-page-next"' + ( curPage === totalPages ? ' disabled' : '' ) + '>\u203a</button>';
+		toolbar.style.display = '';
+
+		if ( input ) {
+			toolbar.querySelector( '.gh-releases-search__count' ).textContent = total + ' tag' + ( total === 1 ? '' : 's' );
+		}
+
+		// Show pagination only when multiple pages; clear it otherwise so layout stays clean.
+		pagination.innerHTML = totalPages > 1
+			? '<button class="wte-dbg-page-btn gh-page-prev"' + ( curPage === 1 ? ' disabled' : '' ) + '>\u2039</button>'
+				+ '<span class="gh-page-indicator">' + curPage + ' / ' + totalPages + '</span>'
+				+ '<button class="wte-dbg-page-btn gh-page-next"' + ( curPage === totalPages ? ' disabled' : '' ) + '>\u203a</button>'
+			: '';
 	}
 
 	pagination.addEventListener( 'click', function( e ) {
@@ -1067,9 +1092,11 @@ function releaseRowHtml( r, repoName ) {
 		? '<span style="font-size:11px;color:var(--dbg-text-muted);">No ZIP asset</span>'
 		: '<button class="wte-dbg-cron-run-btn gh-install-btn">Install</button>';
 
+	var branchBadge = r.branch ? '<span class="gh-release__branch" title="Created from branch">' + esc( r.branch ) + '</span>' : '';
+
 	return [
 		'<div class="gh-release" data-zip="' + esc( r.zip_url ) + '" data-repo-name="' + esc( repoName ) + '" data-tag="' + esc( r.tag ) + '">',
-		'<span class="gh-release__tag"><a class="gh-release__tag-label gh-link" href="' + esc( r.html_url ) + '" target="_blank" rel="noopener">' + esc( r.tag ) + '</a>' + preBadge + noBadge + '</span>',
+		'<span class="gh-release__tag"><a class="gh-release__tag-label gh-link" href="' + esc( r.html_url ) + '" target="_blank" rel="noopener">' + esc( r.tag ) + '</a>' + preBadge + noBadge + branchBadge + '</span>',
 		instBadge,
 		'<span class="gh-release__date">' + humanDate( r.published ) + '</span>',
 		'<div class="gh-release__right">' + installBtn + '</div>',
@@ -1104,9 +1131,10 @@ function doInstall( btn, row ) {
 			codeEl.style.fontSize = '10px';
 			codeEl.textContent    = pluginFile;
 
+			var action     = res.data.action === 'replaced' ? 'Replaced' : 'Installed';
 			var resultSpan = document.createElement( 'span' );
 			resultSpan.className = 'gh-release__result ok';
-			resultSpan.appendChild( document.createTextNode( '\u2713 Installed \u2014 ' ) );
+			resultSpan.appendChild( document.createTextNode( '\u2713 ' + action + ' \u2014 ' ) );
 			resultSpan.appendChild( codeEl );
 
 			var activateBtn = document.createElement( 'button' );
@@ -1128,7 +1156,7 @@ function doInstall( btn, row ) {
 				};
 			}
 
-			setStatus( repoName + ' installed successfully.', 'success' );
+			setStatus( repoName + ' ' + action.toLowerCase() + ' successfully.', 'success' );
 		} else {
 			var msg = ( res.data && res.data.message ) ? res.data.message : 'Install failed.';
 			btn.innerHTML = 'Install';
@@ -1251,7 +1279,51 @@ function compareVersions( a, b ) {
 	return 0;
 }
 
+// ---- Download notification banner ----
+
+function downloadBannerHtml() {
+	var lastDl   = parseInt( ( WPTEDZGithub.last_download_ts || 0 ), 10 );
+	var lastSeen = parseInt( localStorage.getItem( 'wpte_dz_gh_last_seen_ts' ) || '0', 10 );
+	if ( ! lastDl || lastDl <= lastSeen ) return '';
+
+	return '<div class="gh-download-banner" id="gh-download-banner">'
+		+ '<span class="gh-download-banner__icon" aria-hidden="true"></span>'
+		+ '<span class="gh-download-banner__msg">New webhook downloads available</span>'
+		+ '<button class="gh-download-banner__dismiss" aria-label="Dismiss">×</button>'
+		+ '</div>';
+}
+
+function bindDownloadBanner( container ) {
+	var banner = container.querySelector( '#gh-download-banner' );
+	if ( ! banner ) return;
+	banner.querySelector( '.gh-download-banner__dismiss' ).addEventListener( 'click', function() {
+		var lastDl = parseInt( ( WPTEDZGithub.last_download_ts || 0 ), 10 );
+		localStorage.setItem( 'wpte_dz_gh_last_seen_ts', String( lastDl ) );
+		banner.remove();
+	} );
+}
+
 // ---- Utilities ----
+function copyToClipboard( text, btn ) {
+	var flash = function() {
+		btn.textContent = '✓';
+		setTimeout( function() { btn.textContent = '⧉'; }, 1500 );
+	};
+	if ( navigator.clipboard && navigator.clipboard.writeText ) {
+		navigator.clipboard.writeText( text ).then( flash );
+		return;
+	}
+	// Fallback for non-secure contexts (HTTP local dev).
+	var ta = document.createElement( 'textarea' );
+	ta.value = text;
+	ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+	document.body.appendChild( ta );
+	ta.select();
+	document.execCommand( 'copy' );
+	ta.remove();
+	flash();
+}
+
 function humanDate( iso ) {
 	if ( ! iso ) return '';
 	var d    = new Date( iso );
@@ -1313,10 +1385,28 @@ function issuesWelcomeHtml() {
 		'<span class="gh-issues-welcome__hint-label">Issue Title</span>',
 		'<code class="gh-issues-welcome__hint-code">booking form validation</code>',
 		'</div>',
+		'<div class="gh-issues-welcome__hint gh-issues-welcome__hint--webhook">',
+		'<span class="gh-issues-welcome__hint-label">Webhook Payload URL</span>',
+		'<code class="gh-issues-welcome__hint-code" id="gh-webhook-url-hint"></code>',
+		'<button class="gh-hint-copy-btn" id="gh-webhook-url-copy" title="Copy URL">⧉</button>',
+		'</div>',
 		'</div>',
 		'<p class="gh-issues-welcome__tip"><kbd>Enter</kbd> to search immediately &middot; waits 2s otherwise</p>',
 		'</div>',
 	].join( '' );
+}
+
+function bindIssuesWelcome( container ) {
+	var url = WPTEDZGithub.webhook_url || '';
+	var el  = container.querySelector( '#gh-webhook-url-hint' );
+	if ( el ) el.textContent = url;
+
+	var copyBtn = container.querySelector( '#gh-webhook-url-copy' );
+	if ( copyBtn && url ) {
+		copyBtn.addEventListener( 'click', function() {
+			copyToClipboard( url, copyBtn );
+		} );
+	}
 }
 
 function emptyStateHtml( msg ) {

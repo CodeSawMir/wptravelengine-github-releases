@@ -59,9 +59,10 @@ class GithubInstaller {
 		$existing_slug = self::find_installed_slug_by_name( $zip_plugin_name );
 		$final_slug    = $existing_slug ?: sanitize_title( $repo_name );
 
-		$plugin_dir = WP_PLUGIN_DIR . '/' . $final_slug;
+		$plugin_dir   = WP_PLUGIN_DIR . '/' . $final_slug;
+		$was_existing = is_dir( $plugin_dir );
 
-		if ( is_dir( $plugin_dir ) ) {
+		if ( $was_existing ) {
 			self::rmdir_recursive( $plugin_dir );
 		}
 
@@ -86,6 +87,7 @@ class GithubInstaller {
 			'plugin_file' => $plugin_file,
 			'slug'        => $final_slug,
 			'plugin_name' => $zip_plugin_name,
+			'action'      => $was_existing ? 'replaced' : 'installed',
 		];
 	}
 

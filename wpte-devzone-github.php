@@ -12,21 +12,22 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WPTE_DZ_GITHUB_VERSION',      '1.0.0' );
-define( 'WPTE_DZ_GITHUB_DIR',          plugin_dir_path( __FILE__ ) );
-define( 'WPTE_DZ_GITHUB_URL',          plugin_dir_url( __FILE__ ) );
-define( 'WPTE_DZ_GITHUB_OPTION_TOKEN', 'wpte_dz_github_token' );
+define( 'WPTE_DZ_GITHUB_VERSION',               '1.0.0' );
+define( 'WPTE_DZ_GITHUB_DIR',                  plugin_dir_path( __FILE__ ) );
+define( 'WPTE_DZ_GITHUB_URL',                  plugin_dir_url( __FILE__ ) );
+define( 'WPTE_DZ_GITHUB_OPTION_TOKEN',         'wpte_dz_github_token' );
+define( 'WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG',  'wpte_dz_github_download_log' );
+define( 'WPTE_DZ_GITHUB_OPTION_LAST_DL_TS',   'wpte_dz_github_last_download_ts' );
+
+// Override in wp-config.php for a custom secret; default is the static testing value.
+if ( ! defined( 'WPTE_DZ_GITHUB_WEBHOOK_SECRET' ) ) {
+	define( 'WPTE_DZ_GITHUB_WEBHOOK_SECRET', 'wpte-devzone-github-testing' );
+}
 
 add_action( 'plugins_loaded', function (): void {
-	// Guard: DevZone must be active and its AbstractTool must be loaded.
-	if ( ! class_exists( \WPTravelEngineDevZone\Tools\AbstractTool::class ) ) {
-		return;
-	}
-	if ( ! is_admin() ) {
-		return;
-	}
 
 	// Autoloader: WPTEDZGithub\ClassName → includes/class-classname.php
+	// Registered before is_admin() so REST API requests can use GithubApi / GithubRestController.
 	spl_autoload_register( function ( string $class ): void {
 		$prefix = 'WPTEDZGithub\\';
 		if ( strpos( $class, $prefix ) !== 0 ) {
@@ -39,6 +40,17 @@ add_action( 'plugins_loaded', function (): void {
 			require_once $file;
 		}
 	} );
+
+	// REST route — available outside admin context.
+	add_action( 'rest_api_init', [ \WPTEDZGithub\GithubRestController::class, 'register_routes' ] );
+
+	// Admin-only: tab registration requires DevZone's AbstractTool.
+	if ( ! is_admin() ) {
+		return;
+	}
+	if ( ! class_exists( \WPTravelEngineDevZone\Tools\AbstractTool::class ) ) {
+		return;
+	}
 
 	// Register 'github' group. The nav bar is kept visible via __inject_markup
 	// (DevZone layout.php and nav-manager.js both check for inject presence).
@@ -59,6 +71,19 @@ add_action( 'plugins_loaded', function (): void {
 		return $tabs;
 	} );
 
-	// Append GithubTool to the tools array.
-	add_filter( 'wpte_devzone_tools', fn( array $tools ): array => [ ...$tools, new \WPTEDZGithub\GithubTool() ] );
+	// Inject 'github-downloads' subtab into the existing Logs group.
+	// Priority 20 ensures this runs after core registers the 'logs' group at priority 10.
+	add_filter( 'wpte_devzone_tabs', function ( array $tabs ): array {
+		if ( isset( $tabs['logs']['subtabs'] ) ) {
+			$tabs['logs']['subtabs']['github-downloads'] = __( 'GitHub Downloads', 'wpte-devzone-github' );
+		}
+		return $tabs;
+	}, 20 );
+
+	// Append both tools.
+	add_filter( 'wpte_devzone_tools', fn( array $tools ): array => [
+		...$tools,
+		new \WPTEDZGithub\GithubTool(),
+		new \WPTEDZGithub\GithubDownloadsTool(),
+	] );
 } );
