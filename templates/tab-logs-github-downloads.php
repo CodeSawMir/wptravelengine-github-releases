@@ -76,14 +76,14 @@ $log = array_reverse( get_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, [] ) );
 						<?php
 						$repo_short = $full_name ? explode( '/', $full_name )[1] ?? $full_name : '';
 						if ( $issue_href ) : ?>
-							<a class="gh-link gh-log__issue-ref" href="<?php echo esc_url( $issue_href ); ?>" target="_blank" rel="noopener noreferrer">
-								<?php echo esc_html( $repo_short . ( $issue_num ? ' #' . $issue_num : '' ) ); ?>
+							<a class="gh-link gh-log__issue-ref" href="<?php echo esc_url( $issue_href ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $repo_short . ( $issue_num ? ' #' . $issue_num : '' ) ); ?>">
+								<?php echo esc_html( ! empty( $issue['title'] ) ? $issue['title'] : $repo_short . ( $issue_num ? ' #' . $issue_num : '' ) ); ?>
 							</a>
 						<?php else : ?>
-							<span class="gh-log__issue-ref"><?php echo esc_html( $repo_short ); ?></span>
+							<span class="gh-log__issue-ref"<?php if ( ! empty( $issue['title'] ) ) : ?> title="<?php echo esc_attr( $issue['title'] ); ?>"<?php endif; ?>><?php echo esc_html( $repo_short ); ?></span>
 						<?php endif; ?>
-						<?php if ( ! empty( $issue['title'] ) ) : ?>
-							<span class="gh-log__issue-title"><?php echo esc_html( $issue['title'] ); ?></span>
+						<?php if ( $repo_short && $issue_num ) : ?>
+							<span class="gh-log__issue-title"><?php echo esc_html( $repo_short . ' #' . $issue_num ); ?></span>
 						<?php endif; ?>
 					</td>
 					<td class="gh-log__plugin">

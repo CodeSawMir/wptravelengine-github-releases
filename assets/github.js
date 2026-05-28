@@ -19,6 +19,7 @@ const state = {
 	installedPlugins: {},
 	issues          : [],        // current issue search results
 	issueSearch     : '',        // last issue query
+	autoInstall     : !! WPTEDZGithub.auto_install,
 };
 
 var searchTimer;
@@ -26,7 +27,6 @@ var searchTimer;
 const releaseCache    = {};
 const issuePrCache    = {};   // "owner/repo#number" → prs[]
 const branchTagCache  = {};   // "owner/repo#branch"  → string[]
-
 // ---- HTML escape helper (XSS protection) ----
 // All untrusted strings MUST pass through esc() before DOM insertion.
 function esc( str ) {
@@ -1373,6 +1373,18 @@ function issuesWelcomeHtml() {
 		'<h3 class="gh-issues-welcome__title">Find a GitHub Issue</h3>',
 		'<p class="gh-issues-welcome__desc">Paste an issue URL or search by keyword to load the issue along with its linked pull requests and release tags.</p>',
 		'<div class="gh-issues-welcome__hints">',
+		'<div class="gh-issues-welcome__hint gh-issues-welcome__hint--auto-install">',
+		'<span class="gh-issues-welcome__hint-label">Auto-install on webhook</span>',
+		'<button class="gh-auto-install-toggle' + ( state.autoInstall ? ' is-on' : '' ) + '" id="gh-auto-install-toggle" role="switch" aria-checked="' + ( state.autoInstall ? 'true' : 'false' ) + '">',
+		'<span class="gh-toggle-track"><span class="gh-toggle-thumb"></span></span>',
+		'<span class="gh-toggle-text">' + ( state.autoInstall ? 'Enabled' : 'Disabled' ) + '</span>',
+		'</button>',
+		'</div>',
+		'<div class="gh-issues-welcome__hint gh-issues-welcome__hint--webhook"' + ( state.autoInstall ? '' : ' style="display:none"' ) + '>',
+		'<span class="gh-issues-welcome__hint-label">Webhook Payload URL</span>',
+		'<code class="gh-issues-welcome__hint-code" id="gh-webhook-url-hint"></code>',
+		'<button class="gh-hint-copy-btn" id="gh-webhook-url-copy" title="Copy URL">⧉</button>',
+		'</div>',
 		'<div class="gh-issues-welcome__hint">',
 		'<span class="gh-issues-welcome__hint-label">Issue URL</span>',
 		'<code class="gh-issues-welcome__hint-code">https://github.com/org/repo/issues/123</code>',
@@ -1384,11 +1396,6 @@ function issuesWelcomeHtml() {
 		'<div class="gh-issues-welcome__hint">',
 		'<span class="gh-issues-welcome__hint-label">Issue Title</span>',
 		'<code class="gh-issues-welcome__hint-code">booking form validation</code>',
-		'</div>',
-		'<div class="gh-issues-welcome__hint gh-issues-welcome__hint--webhook">',
-		'<span class="gh-issues-welcome__hint-label">Webhook Payload URL</span>',
-		'<code class="gh-issues-welcome__hint-code" id="gh-webhook-url-hint"></code>',
-		'<button class="gh-hint-copy-btn" id="gh-webhook-url-copy" title="Copy URL">⧉</button>',
 		'</div>',
 		'</div>',
 		'<p class="gh-issues-welcome__tip"><kbd>Enter</kbd> to search immediately &middot; waits 2s otherwise</p>',
@@ -1405,6 +1412,36 @@ function bindIssuesWelcome( container ) {
 	if ( copyBtn && url ) {
 		copyBtn.addEventListener( 'click', function() {
 			copyToClipboard( url, copyBtn );
+		} );
+	}
+
+	var webhookHint = container.querySelector( '.gh-issues-welcome__hint--webhook' );
+
+	var toggleBtn = container.querySelector( '#gh-auto-install-toggle' );
+	if ( toggleBtn ) {
+		toggleBtn.addEventListener( 'click', function() {
+			var nowOn  = toggleBtn.getAttribute( 'aria-checked' ) !== 'true';
+			var textEl = toggleBtn.querySelector( '.gh-toggle-text' );
+
+			toggleBtn.setAttribute( 'aria-checked', nowOn ? 'true' : 'false' );
+			toggleBtn.classList.toggle( 'is-on', nowOn );
+			if ( textEl ) textEl.textContent = nowOn ? 'Enabled' : 'Disabled';
+			if ( webhookHint ) webhookHint.style.display = nowOn ? '' : 'none';
+			state.autoInstall = nowOn;
+
+			post( 'wpte_dz_gh_set_auto_install', { enabled: nowOn ? '1' : '0' } ).then( function( res ) {
+				if ( res && res.success ) {
+					setStatus( nowOn ? 'Webhook auto-install enabled.' : 'Webhook auto-install disabled.', 'success' );
+				} else {
+					// Revert optimistic update.
+					state.autoInstall = ! nowOn;
+					toggleBtn.setAttribute( 'aria-checked', ! nowOn ? 'true' : 'false' );
+					toggleBtn.classList.toggle( 'is-on', ! nowOn );
+					if ( textEl ) textEl.textContent = ! nowOn ? 'Enabled' : 'Disabled';
+					if ( webhookHint ) webhookHint.style.display = ! nowOn ? '' : 'none';
+					setStatus( 'Failed to save auto-install setting.', 'error' );
+				}
+			} );
 		} );
 	}
 }
