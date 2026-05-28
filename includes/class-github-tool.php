@@ -228,6 +228,24 @@ class GithubTool extends AbstractTool {
 			wp_send_json_error( [ 'message' => $result->get_error_message() ] );
 		}
 
+		$plugin_file  = $result['plugin_file'] ?? '';
+		$activated    = false;
+		$activate_err = '';
+
+		if ( $plugin_file && file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
+			$act = activate_plugin( $plugin_file );
+			if ( is_wp_error( $act ) ) {
+				$activate_err = $act->get_error_message();
+			} else {
+				$activated = true;
+			}
+		}
+
+		$result['activated'] = $activated;
+		if ( $activate_err ) {
+			$result['activate_error'] = $activate_err;
+		}
+
 		wp_send_json_success( $result );
 	}
 
