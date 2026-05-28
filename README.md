@@ -1,159 +1,119 @@
 # WPTE DevZone – GitHub
 
-A sub-plugin for the **WP Travel Engine Dev Zone** that adds a **GitHub** tab for managing releases, issues, and plugin installation directly from the WordPress admin.
+Sub-plugin for **WP Travel Engine Dev Zone**. Adds a GitHub tab for release management, issue-driven installs, and a webhook auto-install pipeline.
 
 ---
 
 ## Requirements
 
-- **_wptravelengine-devzone-plugin** must be active (provides `AbstractTool`, the shared admin shell, and nav bar injection)
-- WordPress admin access with `manage_options` capability
-- A GitHub Personal Access Token (PAT) with at minimum: `repo`, `read:org`
+- **_wptravelengine-devzone-plugin** active (provides `AbstractTool` and shared admin shell)
+- WordPress `manage_options` capability
+- GitHub PAT with `repo`, `read:org` scopes
 
 ---
 
 ## Features
 
-### Issues Tab
-- Search issues by **URL**, **GitHub Project board URL**, or **title keyword**
-- Supports standard issue URLs: `https://github.com/org/repo/issues/123`
-- Supports project board URLs: `https://github.com/orgs/Org/projects/N/...?issue=Org|repo|123`
-- Keyword search is scoped to the PAT user's organisations (`org:` qualifiers added automatically)
-- Each issue card auto-expands to show linked PRs (via GraphQL `timelineItems`)
-- Each PR row auto-expands to show releases whose tags were created from that PR's commits
-
-### Repos Tab
-- Lists all personal and organisation repositories, grouped by owner
-- Collapsible sections; section state persisted in `localStorage`
-- Mark repos as favourites (also persisted in `localStorage`)
-- Refresh to bust the 24-hour transient cache
-
-### Releases
-- Lists all non-draft releases per repository
-- Filters to only releases whose tag commit belongs to the expanded PR
-- Shows installed plugin version badge and active/inactive state
-- One-click install from release zip (supports private repos via GitHub redirect resolution)
-- One-click activate for installed plugins
+- **Issues tab** — search by URL, project board URL, or keyword; auto-loads linked PRs and release tags
+- **Repos tab** — all personal + org repos grouped by owner, with favourites and collapsible sections
+- **Releases** — one-click install/activate from release zip; shows installed version badge and branch name
+- **Webhook auto-install** — GitHub Projects v2 webhook installs plugins when an issue is moved to *Testing* or *Push Zips*; togglable per-admin
+- **GitHub Downloads log** — last 100 webhook-triggered installs (success + failure) in the Logs tab
 
 ---
 
 ## File Structure
 
 ```
-_wpte_devzone_github/
-├── wpte-devzone-github.php      # Plugin bootstrap, autoloader, tab registration
+_wptravelengine-github-releases/
+├── wpte-devzone-github.php
 ├── includes/
-│   ├── class-github-api.php     # All GitHub REST + GraphQL calls
-│   ├── class-github-tool.php    # AbstractTool implementation; AJAX handlers
-│   └── class-github-installer.php  # Download + WP_Upgrader-based plugin install
+│   ├── constants.php
+│   ├── plugin.php                      # Plugin::boot() — all hook registration
+│   ├── class-github-api.php
+│   ├── class-github-tool.php           # AbstractTool + AJAX handlers
+│   ├── class-github-installer.php      # Download, extract, slug-map, install
+│   ├── class-github-rest-controller.php # Webhook endpoint
+│   └── class-github-downloads-tool.php
 ├── assets/
-│   ├── github.js                # ES module — full frontend app (no build step)
-│   └── github.css               # Styles (dark-mode aware via .wte-dbg-dark)
+│   ├── github.js
+│   └── github.css
 └── templates/
-    └── tab-github.php           # Root mount point rendered by DevZone layout
+    ├── tab-github.php
+    └── tab-logs-github-downloads.php
 ```
 
 ---
 
-## How It Works
+## Webhook Setup
 
-### Bootstrap (`wpte-devzone-github.php`)
-- Hooks into `plugins_loaded`; bails if `AbstractTool` is not available or if not in admin
-- Registers a PSR-0-style autoloader mapping `WPTEDZGithub\ClassName` → `includes/class-classname.php`
-- Adds a `github` entry to the `wpte_devzone_tabs` filter with `priority: 4`
-- Appends a `GithubTool` instance via the `wpte_devzone_tools` filter
+1. Set a secret in `wp-config.php`:
+   ```php
+   define( 'WPTE_DZ_GITHUB_WEBHOOK_SECRET', 'your-secret' );
+   ```
+   Default (testing only): `wpte-devzone-github-testing`
+2. Add a webhook in GitHub → Settings → Webhooks:
+   - **Payload URL**: shown in the Issues tab
+   - **Content type**: `application/json`
+   - **Secret**: same value as above
+   - **Events**: Projects v2 item
+3. Move an issue to *Testing* or *Push Zips* — linked PR releases are installed automatically
 
-### Backend (`class-github-api.php`)
-All GitHub communication goes through `GithubApi`:
-
-| Method | Description |
-|---|---|
-| `validate_token()` | `GET /user` — confirms PAT validity, returns login/name/avatar |
-| `get_all_repos()` | Paginates personal + all org repos, deduplicates, sorts by `updated_at` |
-| `get_releases()` | Paginates `/repos/{full_name}/releases`, excludes drafts |
-| `get_user_orgs()` | `GET /user/orgs`, cached 1 hour per token hash |
-| `search_issues()` | `GET /search/issues` with `org:` scoping + `in:title,body type:issue` |
-| `parse_issue_url()` | Regex-based: handles standard issue URL and project board `?issue=` param |
-| `get_issue()` | `GET /repos/{full_name}/issues/{number}`, rejects pull requests |
-| `get_issue_prs()` | GraphQL `timelineItems` (CrossReferenced + Connected events) |
-| `get_tags_for_pr()` | GraphQL PR commits (up to 250) intersected against REST tags |
-| `download_zip()` | Resolves GitHub redirect before download (private repo support) |
-
-**Caching**
-- Repos: `wpte_dz_gh_repos_{hash}` transient — 24 hours
-- User validation: `wpte_dz_gh_user_{hash}` transient — 30 minutes
-- Orgs: `wpte_dz_gh_orgs_{hash}` transient — 1 hour
-- Token hash: `substr(md5($token), 0, 12)` — used as a per-token namespace for all transients
-
-### Frontend (`assets/github.js`)
-A self-contained ES module (no build step required). Loaded as `type="module"`.
-
-**State object**
-```js
-const state = {
-    hasToken, user, repos, favs, collapsed,
-    tab,          // 'issues' | 'all' | 'favs'
-    search,       // repo search filter
-    issues,       // current issue search results
-    issueSearch,  // last issue query string
-};
-```
-
-**Tab rendering**
-- `renderApp()` — builds the toolbar (tabs, search, user identity) into `#gh-toolbar-inject`
-- `renderIssuesGrid()` — shows welcome screen, skeleton loader, or issue cards
-- `renderGrid()` — shows repo sections grouped by org owner
-
-**Auto-expansion flow**
-1. Issue result arrives → `renderIssuesGrid()` → renders cards → immediately calls `loadIssuePRs()` per card
-2. PRs arrive → `renderIssuePRs()` → renders PR rows → immediately calls `loadPrReleases()` per row
-3. Releases arrive → filtered by PR commit SHAs → `renderReleases()`
-
-**Race condition guard**
-- `renderGrid()` returns early if `state.tab === 'issues'`
-- `renderIssuesGrid()` returns early if `state.tab !== 'issues'`
-- This prevents stale AJAX responses from polluting the wrong tab's content area
-
-**Caches** (in-memory, reset on page load)
-- `releaseCache` — keyed by `full_name`
-- `issuePrCache` — keyed by `owner/repo#number`
-- `branchTagCache` — keyed by `owner/repo#prNumber`
-
-### AJAX Actions
-
-All actions require a valid nonce (`wpteDbg.nonce`) and `manage_options` capability.
-
-| Action | Handler | Description |
-|---|---|---|
-| `wpte_dz_gh_validate` | `ajax_validate` | Validate stored token; returns user object |
-| `wpte_dz_gh_save_token` | `ajax_save_token` | Save + validate a new PAT |
-| `wpte_dz_gh_disconnect` | `ajax_disconnect` | Delete token + all related transients |
-| `wpte_dz_gh_fetch_repos` | `ajax_fetch_repos` | Fetch repos (force param busts cache) |
-| `wpte_dz_gh_get_releases` | `ajax_get_releases` | Releases for a repo |
-| `wpte_dz_gh_get_issue_prs` | `ajax_get_issue_prs` | PRs linked to an issue |
-| `wpte_dz_gh_get_branch_tags` | `ajax_get_branch_tags` | Tags for a PR (via commit SHA intersection) |
-| `wpte_dz_gh_search_issues` | `ajax_search_issues` | Keyword issue search |
-| `wpte_dz_gh_get_issue` | `ajax_get_issue` | Single issue by repo + number |
-| `wpte_dz_gh_get_issue_by_url` | `ajax_get_issue_by_url` | Issue from a GitHub or project board URL |
-| `wpte_dz_gh_install` | `ajax_install` | Download + install plugin from zip URL |
-| `wpte_dz_gh_activate` | `ajax_activate` | Activate an installed plugin |
-| `wpte_dz_gh_installed_versions` | `ajax_installed_versions` | Map of all installed plugin names → version/active/file |
+The endpoint is only registered when **Auto-install on webhook** is enabled (toggle in Issues tab).
 
 ---
 
-## WordPress Options Used
+## WordPress Options
 
 | Option | Contents |
 |---|---|
-| `wpte_dz_github_token` | The stored PAT (plain text) |
-| `wpte_dz_github_user` | Cached user object (login, name, avatar_url) |
+| `wpte_dz_github_token` | Stored PAT |
+| `wpte_dz_github_user` | Cached user object |
+| `wpte_dz_github_auto_install` | `yes` / `no` — controls endpoint registration |
+| `wpte_dz_github_download_log` | Last 100 webhook install records |
+| `wpte_dz_github_last_download_ts` | Timestamp of most recent download |
 
 ---
 
-## Security Notes
+## AJAX Actions
 
-- All AJAX handlers call `Admin::verify_request()` which checks the nonce and `manage_options` capability
-- PAT is stored in `wp_options` (plain text); access is gated behind `manage_options`
-- All user/API-sourced strings are passed through `esc()` (via `div.textContent`) before DOM insertion
-- GitHub URLs are validated with `preg_match('#^https?://github\.com/#i', ...)` before processing
-- Plugin file paths passed to `ajax_activate` are validated against a strict regex before use
+All require a valid nonce and `manage_options`.
+
+| Action | Description |
+|---|---|
+| `wpte_dz_gh_validate` | Validate stored token |
+| `wpte_dz_gh_save_token` | Save + validate new PAT |
+| `wpte_dz_gh_disconnect` | Delete token + transients |
+| `wpte_dz_gh_fetch_repos` | Fetch repos (force param busts cache) |
+| `wpte_dz_gh_get_releases` | Releases for a repo |
+| `wpte_dz_gh_get_issue_prs` | PRs linked to an issue |
+| `wpte_dz_gh_get_branch_tags` | Tags for a PR |
+| `wpte_dz_gh_search_issues` | Keyword issue search |
+| `wpte_dz_gh_get_issue` | Single issue by repo + number |
+| `wpte_dz_gh_get_issue_by_url` | Issue from a GitHub or project board URL |
+| `wpte_dz_gh_install` | Download + install plugin from zip |
+| `wpte_dz_gh_activate` | Activate an installed plugin |
+| `wpte_dz_gh_installed_versions` | All installed plugins → version/active/file |
+| `wpte_dz_gh_get_download_log` | Retrieve download log |
+| `wpte_dz_gh_set_auto_install` | Enable / disable webhook endpoint |
+
+---
+
+## Security
+
+- All AJAX handlers verify nonce + `manage_options` via `Admin::verify_request()`
+- Webhook endpoint verifies HMAC-SHA256 (`X-Hub-Signature-256`) and replays via `X-GitHub-Delivery` transient
+- Only repos whose owner matches the stored user or their orgs are installed
+- All user/API strings pass through `esc()` before DOM insertion
+- Plugin paths validated with strict regex before `activate_plugin()`
+
+---
+
+## Changelog
+
+### 1.0.1
+- Webhook auto-install via GitHub Projects v2 (HMAC-SHA256, replay protection, column gate, trusted-owner allowlist)
+- GitHub Downloads log tab — last 100 installs with success/failure rows
+
+### 1.0.0
+- Initial release

@@ -123,6 +123,7 @@ class GithubApi {
 				'published'  => $r['published_at'] ?? '',
 				'zip_url'    => self::best_zip( $r, $full_name ),
 				'html_url'   => $r['html_url'] ?? '',
+				'branch'     => $r['target_commitish'] ?? '',
 			];
 		}
 

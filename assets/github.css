@@ -768,6 +768,22 @@
 	white-space:   nowrap;
 }
 
+#wpte-dz-github-root .gh-release__branch {
+	font-family:   'SFMono-Regular', Consolas, monospace;
+	font-size:     10px;
+	color:         var(--dbg-text-muted);
+	background:    var(--dbg-surface-alt);
+	border:        1px solid var(--dbg-border);
+	border-radius: 4px;
+	padding:       1px 6px;
+	white-space:   nowrap;
+	opacity:       0.8;
+}
+#wpte-dz-github-root .gh-release__branch::before {
+	content: '⎇ ';
+	font-style: normal;
+}
+
 #wpte-dz-github-root .gh-release__date {
 	font-size:   11px;
 	color:       var(--dbg-text-dim);
@@ -1471,3 +1487,377 @@
 	background: var(--dbg-surface);
 	box-shadow: inset 0 3px 12px rgba(0,0,0,.18);
 }
+
+/* ── Downloads log tab ─────────────────────────────────────────────────────
+   Scoped to .gh-log-wrap (not #wpte-dz-github-root) so styles apply on the
+   DevZone Logs tab as well as inside the GitHub panel.
+   ─────────────────────────────────────────────────────────────────────────── */
+.gh-log-wrap {
+	padding: 0;
+}
+
+/* ── Header ── */
+.gh-log-header {
+	display:        flex;
+	align-items:    center;
+	gap:            10px;
+	padding:        16px 20px 14px;
+	border-bottom:  1px solid var(--dbg-border);
+	flex-wrap:      wrap;
+}
+.gh-log-header__left {
+	display:     flex;
+	align-items: center;
+	gap:         8px;
+	flex:        1;
+}
+.gh-log-header__icon {
+	width:   16px;
+	height:  16px;
+	color:   var(--dbg-accent);
+	opacity: 0.85;
+	flex-shrink: 0;
+}
+.gh-log-header__title {
+	font-weight: 600;
+	font-size:   13px;
+	color:       var(--dbg-text);
+}
+.gh-log-header__count {
+	display:       inline-flex;
+	align-items:   center;
+	justify-content: center;
+	min-width:     20px;
+	height:        18px;
+	padding:       0 6px;
+	background:    var(--dbg-accent);
+	color:         #fff;
+	font-size:     10px;
+	font-weight:   700;
+	border-radius: 10px;
+}
+.gh-log-header__desc {
+	margin:    0;
+	font-size: 11px;
+	color:     var(--dbg-text-muted);
+	width:     100%;
+	padding-left: 24px;
+}
+
+/* ── Empty state ── */
+.gh-log-empty {
+	display:        flex;
+	flex-direction: column;
+	align-items:    center;
+	justify-content: center;
+	padding:        52px 24px;
+	gap:            10px;
+	text-align:     center;
+}
+.gh-log-empty svg {
+	width:   36px;
+	height:  36px;
+	color:   var(--dbg-text-muted);
+	opacity: 0.35;
+}
+.gh-log-empty p {
+	margin:      0;
+	font-size:   13px;
+	font-weight: 500;
+	color:       var(--dbg-text-muted);
+}
+.gh-log-empty span {
+	font-size:  11px;
+	color:      var(--dbg-text-dim, var(--dbg-text-muted));
+	max-width:  340px;
+	line-height: 1.5;
+	opacity:    0.7;
+}
+
+/* ── Table wrap ── */
+.gh-log-table-wrap {
+	padding:    16px 20px 20px;
+	overflow-x: auto;
+}
+
+.gh-log-wrap .gh-log-table {
+	width:           100%;
+	min-width:       700px;
+	border-collapse: separate;
+	border-spacing:  0;
+	font-size:       12.5px;
+	color:           var(--dbg-text);
+	background:      var(--dbg-surface);
+	border:          1px solid var(--dbg-border);
+	border-radius:   8px;
+	overflow:        hidden;
+}
+
+/* Header */
+.gh-log-wrap .gh-log-table thead tr {
+	background: var(--dbg-surface-alt);
+}
+.gh-log-wrap .gh-log-table thead th {
+	padding:        10px 14px;
+	text-align:     left;
+	font-weight:    600;
+	font-size:      10px;
+	color:          var(--dbg-text-muted);
+	text-transform: uppercase;
+	letter-spacing: .07em;
+	border-bottom:  1px solid var(--dbg-border);
+	white-space:    nowrap;
+	background:     var(--dbg-surface-alt);
+}
+.gh-log-wrap .gh-log-table thead th:first-child {
+	border-radius: 7px 0 0 0;
+}
+.gh-log-wrap .gh-log-table thead th:last-child {
+	border-radius: 0 7px 0 0;
+}
+
+/* Rows */
+.gh-log-wrap .gh-log-table tbody .gh-log__row {
+	border-bottom: 1px solid var(--dbg-border-faint, var(--dbg-border));
+	transition:    background 120ms;
+}
+.gh-log-wrap .gh-log-table tbody .gh-log__row[data-action="installed"] td:first-child {
+	box-shadow: inset 3px 0 0 rgba(34,197,94,.6);
+}
+.gh-log-wrap .gh-log-table tbody .gh-log__row[data-action="replaced"] td:first-child {
+	box-shadow: inset 3px 0 0 rgba(234,179,8,.6);
+}
+.gh-log-wrap .gh-log-table tbody .gh-log__row:last-child { border-bottom: none; }
+.gh-log-wrap .gh-log-table tbody .gh-log__row:hover      { background: var(--dbg-hover-bg); }
+
+/* Cells */
+.gh-log-wrap .gh-log-table td {
+	padding:        10px 14px;
+	vertical-align: middle;
+}
+
+/* When */
+.gh-log-wrap .gh-log__time {
+	white-space: nowrap;
+	min-width:   80px;
+}
+.gh-log-wrap .gh-log__time-text {
+	font-size:  11px;
+	color:      var(--dbg-text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Issue */
+.gh-log-wrap .gh-log__issue-ref {
+	display:       block;
+	font-weight:   600;
+	font-size:     12px;
+	max-width:     280px;
+	overflow:      hidden;
+	text-overflow: ellipsis;
+	white-space:   nowrap;
+}
+.gh-log-wrap .gh-log__issue-title {
+	display:       block;
+	margin-top:    3px;
+	font-size:     11px;
+	color:         var(--dbg-text-muted);
+	max-width:     280px;
+	overflow:      hidden;
+	text-overflow: ellipsis;
+	white-space:   nowrap;
+}
+
+/* Plugin */
+.gh-log-wrap .gh-log__plugin-name {
+	font-weight: 500;
+	font-size:   12px;
+}
+
+/* PR */
+.gh-log-wrap .gh-log__pr      { white-space: nowrap; }
+.gh-log-wrap .gh-log__pr-link { font-size: 12px; }
+.gh-log-wrap .gh-log__none    { color: var(--dbg-text-muted); opacity: 0.5; }
+
+/* Tag */
+.gh-log-wrap .gh-log__tag-code {
+	display:       inline-block;
+	font-size:     11px;
+	font-family:   ui-monospace, 'SF Mono', monospace;
+	background:    rgba(99,179,237,.1);
+	color:         var(--dbg-accent);
+	border:        1px solid rgba(99,179,237,.25);
+	border-radius: 20px;
+	padding:       2px 10px;
+	white-space:   nowrap;
+}
+
+/* Action badge */
+.gh-log-wrap .gh-log__action { white-space: nowrap; }
+.gh-log-wrap .gh-log__action-badge {
+	display:        inline-flex;
+	align-items:    center;
+	font-size:      10px;
+	font-weight:    700;
+	padding:        3px 8px;
+	border-radius:  20px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	white-space:    nowrap;
+}
+.gh-log-wrap .gh-log__action-badge--installed {
+	background: rgba(34,197,94,.12);
+	color:      #16a34a;
+	border:     1px solid rgba(34,197,94,.3);
+}
+.gh-log-wrap .gh-log__action-badge--replaced {
+	background: rgba(234,179,8,.12);
+	color:      #b45309;
+	border:     1px solid rgba(234,179,8,.3);
+}
+.gh-log-wrap .gh-log__action-badge--failed {
+	background: rgba(239,68,68,.12);
+	color:      #dc2626;
+	border:     1px solid rgba(239,68,68,.3);
+}
+.gh-log-wrap .gh-log-table tbody .gh-log__row[data-action="failed"] td:first-child {
+	box-shadow: inset 3px 0 0 rgba(239,68,68,.6);
+}
+.gh-log-wrap .gh-log__error-msg {
+	font-size:  11px;
+	color:      #dc2626;
+	font-style: italic;
+}
+
+/* ── Auto-install toggle ─────────────────────────────────────────────────── */
+#wpte-dz-github-root .gh-auto-install-toggle {
+	display:     inline-flex;
+	align-items: center;
+	gap:         7px;
+	background:  none;
+	border:      none;
+	padding:     0;
+	cursor:      pointer;
+	color:       var(--dbg-text-muted);
+	font-size:   11px;
+}
+#wpte-dz-github-root .gh-toggle-track {
+	position:      relative;
+	display:       inline-block;
+	width:         30px;
+	height:        16px;
+	background:    var(--dbg-border, #ccc);
+	border:        1px solid var(--dbg-border, #ccc);
+	border-radius: 8px;
+	transition:    background 150ms, border-color 150ms;
+	flex-shrink:   0;
+}
+#wpte-dz-github-root .gh-toggle-thumb {
+	position:      absolute;
+	top:           1px;
+	left:          2px;
+	width:         12px;
+	height:        12px;
+	background:    var(--dbg-text-muted, #888);
+	border-radius: 50%;
+	transition:    transform 150ms, background 150ms;
+}
+#wpte-dz-github-root .gh-auto-install-toggle.is-on .gh-toggle-track {
+	background:   rgba(34,197,94,.7);
+	border-color: rgba(34,197,94,.8);
+}
+#wpte-dz-github-root .gh-auto-install-toggle.is-on .gh-toggle-thumb {
+	background:   #fff;
+	transform:    translateX(14px);
+}
+#wpte-dz-github-root .gh-auto-install-toggle.is-on .gh-toggle-text {
+	color: #16a34a;
+}
+#wpte-dz-github-root .gh-auto-install-toggle:not(.is-on) .gh-toggle-text {
+	color: var(--dbg-text-muted);
+}
+
+/* ── Download notification banner (Issues tab) ──────────────────────────── */
+#wpte-dz-github-root .gh-download-banner {
+	display:          flex;
+	align-items:      center;
+	gap:              10px;
+	padding:          10px 14px;
+	margin-bottom:    14px;
+	background:       linear-gradient(135deg, rgba(34,197,94,.08) 0%, rgba(16,185,129,.05) 100%);
+	border:           1px solid rgba(34,197,94,.3);
+	border-left:      3px solid rgba(34,197,94,.8);
+	border-radius:    6px;
+	font-size:        12px;
+	color:            var(--dbg-text);
+	animation:        gh-banner-in 0.25s ease;
+}
+
+@keyframes gh-banner-in {
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+#wpte-dz-github-root .gh-download-banner__icon {
+	display:       inline-block;
+	width:         18px;
+	height:        18px;
+	background:    rgba(34,197,94,.85);
+	border-radius: 50%;
+	flex-shrink:   0;
+	position:      relative;
+}
+#wpte-dz-github-root .gh-download-banner__icon::after {
+	content:     '↓';
+	position:    absolute;
+	inset:       0;
+	font-size:   11px;
+	font-weight: 700;
+	color:       #fff;
+	line-height: 18px;
+	text-align:  center;
+}
+
+#wpte-dz-github-root .gh-download-banner__msg {
+	font-weight: 500;
+	color:       var(--dbg-text);
+	letter-spacing: 0.01em;
+}
+
+#wpte-dz-github-root .gh-download-banner__dismiss {
+	margin-left:  auto;
+	background:   none;
+	border:       none;
+	cursor:       pointer;
+	font-size:    16px;
+	line-height:  1;
+	color:        var(--dbg-text-muted);
+	padding:      0 2px;
+	opacity:      0.6;
+	transition:   opacity 0.15s;
+}
+#wpte-dz-github-root .gh-download-banner__dismiss:hover {
+	opacity: 1;
+	color:   var(--dbg-text);
+}
+
+/* ── Webhook hint in issues welcome ─────────────────────────────────────── */
+#wpte-dz-github-root .gh-issues-welcome__hint--webhook {
+	align-items: center;
+}
+#wpte-dz-github-root .gh-issues-welcome__hint--webhook .gh-issues-welcome__hint-code {
+	color:   var(--dbg-accent);
+	opacity: 0.85;
+}
+#wpte-dz-github-root .gh-hint-copy-btn {
+	background:  none;
+	border:      none;
+	cursor:      pointer;
+	font-size:   13px;
+	color:       var(--dbg-text-muted);
+	padding:     0 2px;
+	opacity:     0.6;
+	transition:  opacity 0.15s;
+	flex-shrink: 0;
+}
+#wpte-dz-github-root .gh-hint-copy-btn:hover { opacity: 1; }

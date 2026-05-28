@@ -73,10 +73,14 @@ class GithubTool extends AbstractTool {
 		// nonce is intentionally omitted — JS reads wpteDbg.nonce directly.
 		$cache_key = 'wpte_dz_gh_repos_' . GithubApi::token_hash( $token );
 		wp_localize_script( 'wpte-dz-github', 'WPTEDZGithub', [
-			'ajax_url'  => admin_url( 'admin-ajax.php' ),
-			'has_token' => $has_token,
-			'user'      => $user ?: (object) [],
-			'has_cache' => $has_token && (bool) get_transient( $cache_key ),
+			'ajax_url'         => admin_url( 'admin-ajax.php' ),
+			'admin_url'        => admin_url(),
+			'has_token'        => $has_token,
+			'user'             => $user ?: (object) [],
+			'has_cache'        => $has_token && (bool) get_transient( $cache_key ),
+			'last_download_ts' => (int) get_option( WPTE_DZ_GITHUB_OPTION_LAST_DL_TS, 0 ),
+			'webhook_url'      => get_rest_url( null, 'github/v1/webhook' ),
+			'auto_install'     => get_option( WPTE_DZ_GITHUB_OPTION_AUTO_INSTALL, 'no' ) === 'yes',
 		] );
 	}
 
@@ -96,6 +100,8 @@ class GithubTool extends AbstractTool {
 		add_action( 'wp_ajax_wpte_dz_gh_get_issue_prs',     [ $this, 'ajax_get_issue_prs' ] );
 		add_action( 'wp_ajax_wpte_dz_gh_get_branch_tags',   [ $this, 'ajax_get_branch_tags' ] );
 		add_action( 'wp_ajax_wpte_dz_gh_get_issue_by_url',  [ $this, 'ajax_get_issue_by_url' ] );
+		add_action( 'wp_ajax_wpte_dz_gh_get_download_log',  [ $this, 'ajax_get_download_log' ] );
+		add_action( 'wp_ajax_wpte_dz_gh_set_auto_install',  [ $this, 'ajax_set_auto_install' ] );
 	}
 
 	// ── AJAX handlers ────────────────────────────────────────────────────────
@@ -329,6 +335,15 @@ class GithubTool extends AbstractTool {
 	 * Returns a name-keyed map of all installed plugins with version/active/file.
 	 * Used client-side to show installed version badges next to release rows.
 	 */
+	public function ajax_get_download_log(): void {
+		Admin::verify_request();
+
+		$log = get_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, [] );
+		// Newest first.
+		$log = array_reverse( $log );
+		wp_send_json_success( [ 'log' => $log ] );
+	}
+
 	public function ajax_installed_versions(): void {
 		Admin::verify_request();
 
@@ -349,5 +364,13 @@ class GithubTool extends AbstractTool {
 		}
 
 		wp_send_json_success( [ 'plugins' => $map ] );
+	}
+
+	public function ajax_set_auto_install(): void {
+		Admin::verify_request();
+
+		$enabled = ! empty( $_POST['enabled'] ) && '0' !== $_POST['enabled'];
+		update_option( WPTE_DZ_GITHUB_OPTION_AUTO_INSTALL, $enabled ? 'yes' : 'no' );
+		wp_send_json_success( [ 'auto_install' => $enabled ] );
 	}
 }
