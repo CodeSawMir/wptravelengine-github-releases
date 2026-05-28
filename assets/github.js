@@ -1137,21 +1137,36 @@ function doInstall( btn, row ) {
 			resultSpan.appendChild( document.createTextNode( '\u2713 ' + action + ' \u2014 ' ) );
 			resultSpan.appendChild( codeEl );
 
-			var activateBtn = document.createElement( 'button' );
-			activateBtn.className          = 'wte-dbg-save gh-activate-btn';
-			activateBtn.dataset.pluginFile = pluginFile;
-			activateBtn.textContent        = 'Activate';
-
 			postArea.innerHTML = '';
 			postArea.appendChild( resultSpan );
-			postArea.appendChild( activateBtn );
+
+			if ( res.data.activated ) {
+				var activeTag = document.createElement( 'span' );
+				activeTag.className   = 'gh-release__active-badge';
+				activeTag.textContent = 'Active';
+				postArea.appendChild( activeTag );
+			} else {
+				var activateBtn = document.createElement( 'button' );
+				activateBtn.className          = 'wte-dbg-save gh-activate-btn';
+				activateBtn.dataset.pluginFile = pluginFile;
+				activateBtn.textContent        = 'Activate';
+				postArea.appendChild( activateBtn );
+
+				if ( res.data.activate_error ) {
+					var actErrSpan = document.createElement( 'span' );
+					actErrSpan.className   = 'gh-release__result err';
+					actErrSpan.textContent = res.data.activate_error;
+					postArea.appendChild( actErrSpan );
+				}
+			}
+
 			postArea.classList.add( 'is-visible' );
 
 			if ( pluginName ) {
 				var tag = row.dataset.tag;
 				state.installedPlugins[ pluginName ] = {
 					version : tag.replace( /^v/, '' ),
-					active  : false,
+					active  : !! res.data.activated,
 					file    : pluginFile,
 				};
 			}

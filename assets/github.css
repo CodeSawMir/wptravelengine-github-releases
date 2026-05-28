@@ -830,6 +830,17 @@
 
 #wpte-dz-github-root .gh-release__result.ok  { color: #1a7a40; }
 #wpte-dz-github-root .gh-release__result.err { color: #8a1f1f; }
+#wpte-dz-github-root .gh-release__active-badge {
+	font-size:     10px;
+	font-weight:   700;
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	padding:       2px 8px;
+	border-radius: 20px;
+	background:    rgba(34,197,94,.12);
+	color:         #16a34a;
+	border:        1px solid rgba(34,197,94,.3);
+}
 
 /* Error notice dark mode — devzone.css has no dark override for this class */
 .wte-devzone-wrap.wte-dbg-dark #wpte-dz-github-root .wte-dbg-error-notice {
