@@ -2,7 +2,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WPTE_DZ_GITHUB_VERSION',              '1.0.0' );
+define( 'WPTE_DZ_GITHUB_VERSION',              '1.0.1' );
 define( 'WPTE_DZ_GITHUB_DIR',                 plugin_dir_path( dirname( __FILE__ ) ) );
 define( 'WPTE_DZ_GITHUB_URL',                 plugin_dir_url( dirname( __FILE__ ) ) );
 define( 'WPTE_DZ_GITHUB_OPTION_TOKEN',        'wpte_dz_github_token' );
