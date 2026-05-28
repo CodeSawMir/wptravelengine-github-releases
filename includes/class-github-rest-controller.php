@@ -80,11 +80,22 @@ class GithubRestController {
 			return new \WP_REST_Response( [ 'status' => 'skipped', 'reason' => 'column_not_allowed', 'column' => $to_column ], 200 );
 		}
 
-		// ── 3. Sender log (informational only — auth is done via HMAC above) ──
-		// Do not use sender.login as an authentication signal; it is client-controlled.
+		// ── 3. Auth: sender (user who moved the issue) must be the stored user ──
 		$sender_login = $payload['sender']['login'] ?? '';
 
-		// ── 3. Resolve node ID → full_name + issue_number via GraphQL ─────────
+		$stored_user = get_option( 'wpte_dz_github_user', [] );
+		$stored_login = strtolower( $stored_user['login'] ?? '' );
+
+		
+		if ( ! $stored_login || strtolower( $sender_login ) !== $stored_login ) {
+			return new \WP_Error(
+				'unauthorized_sender',
+				'Sender is not the authorized GitHub user.',
+				[ 'status' => 403 ]
+			);
+		}
+
+		// ── 4. Resolve node ID → full_name + issue_number via GraphQL ─────────
 		$issue_ref = self::resolve_node_id( $node_id );
 		if ( is_wp_error( $issue_ref ) ) {
 			return new \WP_Error( $issue_ref->get_error_code(), $issue_ref->get_error_message(), [ 'status' => 422 ] );
@@ -98,7 +109,7 @@ class GithubRestController {
 			return new \WP_Error( 'invalid_repo', 'Invalid repository name format resolved from node ID.', [ 'status' => 422 ] );
 		}
 
-		// ── 4. Fetch the issue ────────────────────────────────────────────────
+		// ── 5. Fetch the issue ────────────────────────────────────────────────
 		$issue = GithubApi::get_issue( $full_name, $issue_number );
 		if ( is_wp_error( $issue ) ) {
 			return new \WP_Error( $issue->get_error_code(), $issue->get_error_message(), [ 'status' => 422 ] );
@@ -106,7 +117,7 @@ class GithubRestController {
 
 		$issue_summary = self::issue_summary( $issue );
 
-		// ── 5. Get PRs linked to the issue ────────────────────────────────────
+		// ── 6. Get PRs linked to the issue ────────────────────────────────────
 		$prs = GithubApi::get_issue_prs( $full_name, $issue_number );
 		if ( is_wp_error( $prs ) ) {
 			return new \WP_Error( $prs->get_error_code(), $prs->get_error_message(), [ 'status' => 422 ] );
@@ -121,14 +132,13 @@ class GithubRestController {
 			], 200 );
 		}
 
-		// ── 6. Walk PRs → tags → releases → install ───────────────────────────
+		// ── 7. Walk PRs → tags → releases → install ───────────────────────────
 		$installed = [];
 		$errors    = [];
 
 		// Build trusted owner allowlist: stored user login + their org logins.
 		// Only repos whose owner is in this set are installed — prevents a
 		// compromised webhook secret from installing repos outside the account.
-		$stored_user    = get_option( 'wpte_dz_github_user', [] );
 		$trusted_owners = [];
 		if ( ! empty( $stored_user['login'] ) ) {
 			$trusted_owners[] = strtolower( $stored_user['login'] );
