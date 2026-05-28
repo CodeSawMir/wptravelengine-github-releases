@@ -8,7 +8,7 @@ class GithubRestController {
 
 	private const NAMESPACE    = 'github/v1';
 	private const ROUTE        = '/webhook';
-	private const MAX_LOG_SIZE = 10;
+	private const MAX_LOG_SIZE = 100;
 
 	public static function register_routes(): void {
 		register_rest_route( self::NAMESPACE, self::ROUTE, [
@@ -86,7 +86,6 @@ class GithubRestController {
 		$stored_user = get_option( 'wpte_dz_github_user', [] );
 		$stored_login = strtolower( $stored_user['login'] ?? '' );
 
-		
 		if ( ! $stored_login || strtolower( $sender_login ) !== $stored_login ) {
 			return new \WP_Error(
 				'unauthorized_sender',
@@ -160,11 +159,9 @@ class GithubRestController {
 			// Skip repos whose owner is not trusted.
 			$pr_owner = strtolower( explode( '/', $pr_repo )[0] ?? '' );
 			if ( $trusted_owners && ! in_array( $pr_owner, $trusted_owners, true ) ) {
-				$errors[] = [
-					'pr'      => $pr_number,
-					'pr_repo' => $pr_repo,
-					'message' => 'Repo owner not in trusted allowlist.',
-				];
+				$err      = [ 'pr' => $pr_number, 'pr_repo' => $pr_repo, 'message' => 'Repo owner not in trusted allowlist.' ];
+				$errors[] = $err;
+				self::log_error( $issue_summary, $err );
 				continue;
 			}
 
@@ -192,23 +189,17 @@ class GithubRestController {
 				$zip_url = $release['zip_url'] ?? '';
 
 				if ( ! $zip_url ) {
-					$errors[] = [
-						'pr'      => $pr_number,
-						'pr_repo' => $pr_repo,
-						'tag'     => $tag,
-						'message' => 'Release has no zip URL.',
-					];
+					$err      = [ 'pr' => $pr_number, 'pr_repo' => $pr_repo, 'tag' => $tag, 'message' => 'Release has no zip URL.' ];
+					$errors[] = $err;
+					self::log_error( $issue_summary, $err );
 					continue;
 				}
 
 				$result = GithubInstaller::install_from_url( $zip_url, $pr_repo );
 				if ( is_wp_error( $result ) ) {
-					$errors[] = [
-						'pr'      => $pr_number,
-						'pr_repo' => $pr_repo,
-						'tag'     => $tag,
-						'message' => $result->get_error_message(),
-					];
+					$err      = [ 'pr' => $pr_number, 'pr_repo' => $pr_repo, 'tag' => $tag, 'message' => $result->get_error_message() ];
+					$errors[] = $err;
+					self::log_error( $issue_summary, $err );
 				} else {
 					$plugin_file = $result['plugin_file'] ?? '';
 					$activated   = false;
@@ -326,5 +317,24 @@ class GithubRestController {
 
 		update_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, $log, false );
 		update_option( WPTE_DZ_GITHUB_OPTION_LAST_DL_TS, time(), false );
+	}
+
+	private static function log_error( array $issue_summary, array $error_entry ): void {
+		$log   = get_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, [] );
+		$log[] = [
+			'timestamp' => time(),
+			'status'    => 'failed',
+			'issue'     => $issue_summary,
+			'pr'        => $error_entry['pr']      ?? 0,
+			'pr_repo'   => $error_entry['pr_repo'] ?? '',
+			'tag'       => $error_entry['tag']     ?? '',
+			'message'   => $error_entry['message'] ?? '',
+		];
+
+		if ( count( $log ) > self::MAX_LOG_SIZE ) {
+			$log = array_slice( $log, -self::MAX_LOG_SIZE );
+		}
+
+		update_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, $log, false );
 	}
 }

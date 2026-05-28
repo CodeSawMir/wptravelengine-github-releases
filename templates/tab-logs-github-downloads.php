@@ -48,13 +48,20 @@ $log = array_reverse( get_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, [] ) );
 			</thead>
 			<tbody>
 			<?php foreach ( $log as $entry ) :
+				$entry_status = $entry['status'] ?? 'installed';
 				$issue     = $entry['issue'] ?? [];
 				$ts        = ! empty( $entry['timestamp'] ) ? human_time_diff( (int) $entry['timestamp'] ) . ' ago' : '—';
 				$full_name = (string) ( $issue['full_name'] ?? '' );
 				$issue_num = (int) ( $issue['number'] ?? 0 );
 				$pr_repo   = (string) ( $entry['pr_repo'] ?? '' );
 				$pr_num    = (int) ( $entry['pr'] ?? 0 );
-				$action    = ( $entry['action'] ?? 'installed' ) === 'replaced' ? 'replaced' : 'installed';
+				if ( $entry_status === 'failed' ) {
+					$action = 'failed';
+				} elseif ( ( $entry['action'] ?? 'installed' ) === 'replaced' ) {
+					$action = 'replaced';
+				} else {
+					$action = 'installed';
+				}
 
 				// Construct hrefs from safe path segments only — never from raw stored URLs.
 				$encode_path = fn( string $s ) => implode( '/', array_map( 'rawurlencode', explode( '/', $s ) ) );
@@ -80,7 +87,11 @@ $log = array_reverse( get_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, [] ) );
 						<?php endif; ?>
 					</td>
 					<td class="gh-log__plugin">
-						<span class="gh-log__plugin-name"><?php echo esc_html( $entry['plugin_name'] ?? $entry['slug'] ?? '—' ); ?></span>
+						<?php if ( $action === 'failed' ) : ?>
+							<span class="gh-log__error-msg"><?php echo esc_html( $entry['message'] ?? '—' ); ?></span>
+						<?php else : ?>
+							<span class="gh-log__plugin-name"><?php echo esc_html( $entry['plugin_name'] ?? $entry['slug'] ?? '—' ); ?></span>
+						<?php endif; ?>
 					</td>
 					<td class="gh-log__pr">
 						<?php
@@ -100,7 +111,15 @@ $log = array_reverse( get_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, [] ) );
 					</td>
 					<td class="gh-log__action">
 						<span class="gh-log__action-badge gh-log__action-badge--<?php echo esc_attr( $action ); ?>">
-							<?php echo esc_html( $action === 'replaced' ? 'Replaced' : 'Added' ); ?>
+							<?php
+							if ( $action === 'replaced' ) {
+								esc_html_e( 'Replaced', 'wpte-devzone-github' );
+							} elseif ( $action === 'failed' ) {
+								esc_html_e( 'Failed', 'wpte-devzone-github' );
+							} else {
+								esc_html_e( 'Added', 'wpte-devzone-github' );
+							}
+							?>
 						</span>
 					</td>
 				</tr>

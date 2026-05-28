@@ -1710,6 +1710,19 @@
 	color:      #b45309;
 	border:     1px solid rgba(234,179,8,.3);
 }
+.gh-log-wrap .gh-log__action-badge--failed {
+	background: rgba(239,68,68,.12);
+	color:      #dc2626;
+	border:     1px solid rgba(239,68,68,.3);
+}
+.gh-log-wrap .gh-log-table tbody .gh-log__row[data-action="failed"] td:first-child {
+	box-shadow: inset 3px 0 0 rgba(239,68,68,.6);
+}
+.gh-log-wrap .gh-log__error-msg {
+	font-size:  11px;
+	color:      #dc2626;
+	font-style: italic;
+}
 
 /* ── Download notification banner (Issues tab) ──────────────────────────── */
 #wpte-dz-github-root .gh-download-banner {
