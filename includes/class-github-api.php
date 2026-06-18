@@ -349,6 +349,64 @@ class GithubApi {
 	}
 
 	/**
+	 * Return the latest release for $branch using a 3-pass strategy:
+	 *
+	 * Pass 1 — tag name pattern: v{N}.{N}.{N}-{branch}.{N}
+	 *           Branch slashes are normalised to hyphens to match CI tag conventions.
+	 * Pass 2 — target_commitish === branch name (direct string match).
+	 * Pass 3 — target_commitish is a SHA; fetch last 100 branch commits and
+	 *           check membership.
+	 * Fallback — newest release overall.
+	 *
+	 * @return array|\WP_Error
+	 */
+	public static function get_latest_release_for_branch( string $full_name, string $branch ) {
+		$releases = self::get_releases( $full_name );
+		if ( is_wp_error( $releases ) ) {
+			return $releases;
+		}
+		if ( empty( $releases ) ) {
+			return new \WP_Error( 'no_releases', "No releases found for {$full_name}." );
+		}
+
+		// Pass 1: tag name embeds branch — v{N}.{N}.{N}-{branch}.{N}
+		// Normalise / -> - to match how CI tools sanitise branch names in tags.
+		$branch_slug = str_replace( '/', '-', $branch );
+		foreach ( $releases as $release ) {
+			if ( str_contains( $release['tag'], '-' . $branch_slug . '.' ) ) {
+				return $release;
+			}
+		}
+
+		// Pass 2: target_commitish is the branch name verbatim.
+		foreach ( $releases as $release ) {
+			if ( $release['branch'] === $branch ) {
+				return $release;
+			}
+		}
+
+		// Pass 3: target_commitish is a SHA — match against branch commit log.
+		$commits = self::get( '/repos/' . $full_name . '/commits?sha=' . rawurlencode( $branch ) . '&per_page=100' );
+		if ( ! is_wp_error( $commits ) && ! empty( $commits ) ) {
+			$sha_set = [];
+			foreach ( $commits as $c ) {
+				$sha = $c['sha'] ?? '';
+				if ( $sha ) {
+					$sha_set[ $sha ] = true;
+				}
+			}
+			foreach ( $releases as $release ) {
+				if ( isset( $sha_set[ $release['branch'] ] ) ) {
+					return $release;
+				}
+			}
+		}
+
+		// Fallback: newest release regardless of branch.
+		return $releases[0];
+	}
+
+	/**
 	 * Return the names of all tags whose commit belongs to a specific PR.
 	 *
 	 * Fetches the PR's commits via GraphQL (up to 250) and all repo tags via

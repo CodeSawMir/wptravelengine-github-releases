@@ -102,6 +102,7 @@ class GithubTool extends AbstractTool {
 		add_action( 'wp_ajax_wpte_dz_gh_get_issue_by_url',  [ $this, 'ajax_get_issue_by_url' ] );
 		add_action( 'wp_ajax_wpte_dz_gh_get_download_log',  [ $this, 'ajax_get_download_log' ] );
 		add_action( 'wp_ajax_wpte_dz_gh_set_auto_install',  [ $this, 'ajax_set_auto_install' ] );
+		add_action( 'wp_ajax_wpte_dz_gh_clear_log',         [ $this, 'ajax_clear_log' ] );
 	}
 
 	// ── AJAX handlers ────────────────────────────────────────────────────────
@@ -382,6 +383,13 @@ class GithubTool extends AbstractTool {
 		}
 
 		wp_send_json_success( [ 'plugins' => $map ] );
+	}
+
+	public function ajax_clear_log(): void {
+		Admin::verify_request();
+		delete_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG );
+		delete_option( WPTE_DZ_GITHUB_OPTION_LAST_DL_TS );
+		wp_send_json_success();
 	}
 
 	public function ajax_set_auto_install(): void {

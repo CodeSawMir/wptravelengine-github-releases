@@ -1474,6 +1474,45 @@ function githubIcon( size ) {
 	return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>';
 }
 
+// ---- Clear download log ----
+document.addEventListener( 'click', function( e ) {
+	var btn = e.target.closest( '#gh-clear-log-btn' );
+	if ( ! btn ) return;
+
+	if ( ! confirm( 'Clear the download log? This cannot be undone.' ) ) return;
+
+	btn.disabled  = true;
+	btn.textContent = 'Clearing…';
+
+	post( 'wpte_dz_gh_clear_log' ).then( function( res ) {
+		if ( res.success ) {
+			var wrap = btn.closest( '.gh-log-wrap' );
+			if ( wrap ) {
+				var table = wrap.querySelector( '.gh-log-table-wrap' );
+				if ( table ) table.remove();
+				btn.remove();
+				var countEl = wrap.querySelector( '.gh-log-header__count' );
+				if ( countEl ) countEl.remove();
+				var empty = document.createElement( 'div' );
+				empty.className = 'gh-log-empty';
+				var emptyP = document.createElement( 'p' );
+				emptyP.textContent = 'No webhook-triggered downloads yet.';
+				empty.appendChild( emptyP );
+				wrap.appendChild( empty );
+			}
+			setStatus( 'Download log cleared.', 'success' );
+		} else {
+			btn.disabled = false;
+			btn.textContent = 'Clear log';
+			setStatus( 'Failed to clear log.', 'error' );
+		}
+	} ).catch( function() {
+		btn.disabled = false;
+		btn.textContent = 'Clear log';
+		setStatus( 'Failed to clear log: network error.', 'error' );
+	} );
+} );
+
 // ---- Init ----
 
 /**
