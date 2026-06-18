@@ -17,6 +17,9 @@ $log = array_reverse( get_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, [] ) );
 				<span class="gh-log-header__count"><?php echo count( $log ); ?></span>
 			<?php endif; ?>
 		</div>
+		<?php if ( ! empty( $log ) ) : ?>
+			<button class="wte-dbg-cron-run-btn gh-log-clear-btn" id="gh-clear-log-btn"><?php esc_html_e( 'Clear log', 'wpte-devzone-github' ); ?></button>
+		<?php endif; ?>
 		<p class="gh-log-header__desc"><?php esc_html_e( 'Webhook-triggered plugin installs from GitHub releases.', 'wpte-devzone-github' ); ?></p>
 	</div>
 

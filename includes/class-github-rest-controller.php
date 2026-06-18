@@ -34,16 +34,35 @@ class GithubRestController {
 		}
 
 		// Replay protection via X-GitHub-Delivery UUID.
+		// Uses INSERT IGNORE so the lock is acquired atomically — no race between
+		// concurrent requests both reading "not set" before either writes.
 		$delivery_id = $request->get_header( 'X-GitHub-Delivery' );
 		if ( $delivery_id ) {
 			if ( ! preg_match( '/^[0-9a-f\-]{36,72}$/i', $delivery_id ) ) {
 				return new \WP_Error( 'invalid_delivery_id', 'Invalid X-GitHub-Delivery header.', [ 'status' => 400 ] );
 			}
-			$key = 'wpte_dz_gh_delivery_' . $delivery_id;
-			if ( get_transient( $key ) ) {
+			global $wpdb;
+			$lock_key = 'wpte_dz_gh_dlck_' . $delivery_id;
+
+			// Prune expired locks (amortised cleanup, no separate cron needed).
+			$wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND CAST(option_value AS UNSIGNED) < %d",
+					'wpte_dz_gh_dlck_%',
+					time() - DAY_IN_SECONDS
+				)
+			);
+
+			$acquired = (bool) $wpdb->query(
+				$wpdb->prepare(
+					"INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+					$lock_key,
+					(string) time()
+				)
+			);
+			if ( ! $acquired ) {
 				return new \WP_Error( 'replayed_delivery', 'Delivery already processed.', [ 'status' => 409 ] );
 			}
-			set_transient( $key, 1, DAY_IN_SECONDS );
 		}
 
 		return true;
@@ -152,9 +171,17 @@ class GithubRestController {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
+		// Track repos already handled this call — multiple PRs from the same repo
+		// must not trigger duplicate installs.
+		$processed_repos = [];
+
 		foreach ( $prs as $pr ) {
 			$pr_repo   = $pr['head_repo'] ?? $full_name;
 			$pr_number = (int) $pr['number'];
+
+			if ( isset( $processed_repos[ $pr_repo ] ) ) {
+				continue;
+			}
 
 			// Skip repos whose owner is not trusted.
 			$pr_owner = strtolower( explode( '/', $pr_repo )[0] ?? '' );
@@ -165,70 +192,77 @@ class GithubRestController {
 				continue;
 			}
 
-			$tags = GithubApi::get_tags_for_pr( $pr_repo, $pr_number );
-			if ( is_wp_error( $tags ) || empty( $tags ) ) {
+			$head_ref = $pr['head_ref'] ?? '';
+			$base_ref = $pr['base_ref'] ?? '';
+
+			// Tag pattern v{N}.{N}.{N}-{branch}.{N} uses head_ref (source branch).
+			$latest = $head_ref
+				? GithubApi::get_latest_release_for_branch( $pr_repo, $head_ref )
+				: GithubApi::get_releases( $pr_repo );
+
+			if ( is_wp_error( $latest ) ) {
 				continue;
 			}
 
-			$releases = GithubApi::get_releases( $pr_repo );
-			if ( is_wp_error( $releases ) || empty( $releases ) ) {
+			// get_releases fallback returns an array — take first element.
+			if ( is_array( $latest ) && isset( $latest[0] ) ) {
+				$latest = $latest[0];
+			}
+
+			if ( empty( $latest ) ) {
+				continue;
+			}
+			$tag     = $latest['tag'];
+			$zip_url = $latest['zip_url'] ?? '';
+
+			$processed_repos[ $pr_repo ] = true;
+
+			if ( ! $zip_url ) {
+				$err      = [ 'pr' => $pr_number, 'pr_repo' => $pr_repo, 'tag' => $tag, 'message' => 'Release has no zip URL.' ];
+				$errors[] = $err;
+				self::log_error( $issue_summary, $err );
 				continue;
 			}
 
-			$release_by_tag = [];
-			foreach ( $releases as $release ) {
-				$release_by_tag[ $release['tag'] ] = $release;
+			// Skip if this (repo, tag) was installed in the last 5 minutes —
+			// guards against rapid duplicate fires with different delivery IDs.
+			if ( self::recently_installed( $pr_repo, $tag ) ) {
+				continue;
 			}
 
-			foreach ( $tags as $tag ) {
-				if ( ! isset( $release_by_tag[ $tag ] ) ) {
-					continue;
-				}
+			$result = GithubInstaller::install_from_url( $zip_url, $pr_repo );
+			if ( is_wp_error( $result ) ) {
+				$err      = [ 'pr' => $pr_number, 'pr_repo' => $pr_repo, 'tag' => $tag, 'message' => $result->get_error_message() ];
+				$errors[] = $err;
+				self::log_error( $issue_summary, $err );
+			} else {
+				$plugin_file  = $result['plugin_file'] ?? '';
+				$activated    = false;
+				$activate_err = '';
 
-				$release = $release_by_tag[ $tag ];
-				$zip_url = $release['zip_url'] ?? '';
-
-				if ( ! $zip_url ) {
-					$err      = [ 'pr' => $pr_number, 'pr_repo' => $pr_repo, 'tag' => $tag, 'message' => 'Release has no zip URL.' ];
-					$errors[] = $err;
-					self::log_error( $issue_summary, $err );
-					continue;
-				}
-
-				$result = GithubInstaller::install_from_url( $zip_url, $pr_repo );
-				if ( is_wp_error( $result ) ) {
-					$err      = [ 'pr' => $pr_number, 'pr_repo' => $pr_repo, 'tag' => $tag, 'message' => $result->get_error_message() ];
-					$errors[] = $err;
-					self::log_error( $issue_summary, $err );
-				} else {
-					$plugin_file = $result['plugin_file'] ?? '';
-					$activated   = false;
-					$activate_err = '';
-
-					if ( $plugin_file && file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
-						$act = activate_plugin( $plugin_file );
-						if ( is_wp_error( $act ) ) {
-							$activate_err = $act->get_error_message();
-						} else {
-							$activated = true;
-						}
+				if ( $plugin_file && file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
+					$act = activate_plugin( $plugin_file );
+					if ( is_wp_error( $act ) ) {
+						$activate_err = $act->get_error_message();
+					} else {
+						$activated = true;
 					}
-
-					$entry = array_merge( $result, [
-						'pr'       => $pr_number,
-						'pr_repo'  => $pr_repo,
-						'tag'      => $tag,
-						'zip_url'  => $zip_url,
-						'activated' => $activated,
-					] );
-
-					if ( $activate_err ) {
-						$entry['activate_error'] = $activate_err;
-					}
-
-					$installed[] = $entry;
-					self::log_download( $issue_summary, $entry );
 				}
+
+				$entry = array_merge( $result, [
+					'pr'        => $pr_number,
+					'pr_repo'   => $pr_repo,
+					'tag'       => $tag,
+					'zip_url'   => $zip_url,
+					'activated' => $activated,
+				] );
+
+				if ( $activate_err ) {
+					$entry['activate_error'] = $activate_err;
+				}
+
+				$installed[] = $entry;
+				self::log_download( $issue_summary, $entry );
 			}
 		}
 
@@ -290,6 +324,26 @@ class GithubRestController {
 			'full_name' => $issue['full_name'],
 			'html_url'  => $issue['html_url'],
 		];
+	}
+
+	/**
+	 * Return true if (repo, tag) appears in the log within the last $window seconds.
+	 * Prevents duplicate installs from rapid-fire webhook deliveries with distinct UUIDs.
+	 */
+	private static function recently_installed( string $pr_repo, string $tag, int $window = 300 ): bool {
+		$log       = get_option( WPTE_DZ_GITHUB_OPTION_DOWNLOAD_LOG, [] );
+		$threshold = time() - $window;
+		foreach ( $log as $entry ) {
+			if (
+				( $entry['pr_repo']   ?? '' ) === $pr_repo &&
+				( $entry['tag']       ?? '' ) === $tag &&
+				( $entry['timestamp'] ?? 0  ) >= $threshold &&
+				( $entry['status']    ?? 'ok' ) !== 'failed'
+			) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
