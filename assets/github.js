@@ -12,11 +12,12 @@ const state = {
 	hasToken        : WPTEDZGithub.has_token,
 	user            : WPTEDZGithub.user || {},
 	repos           : [],
-	favs            : loadFavs(),
+	favs            : ( WPTEDZGithub.favorites || [] ).slice(),
 	collapsed       : loadCollapsed(),
-	tab             : 'issues',  // all | favs | issues
+	tab             : 'all',  // all | favs | issues
 	search          : '',
 	installedPlugins: {},
+	lastInstalled   : Object.assign( {}, WPTEDZGithub.last_installed || {} ), // full_name -> { tag, installed_at }
 	issues          : [],        // current issue search results
 	issueSearch     : '',        // last issue query
 	autoInstall     : !! WPTEDZGithub.auto_install,
@@ -35,14 +36,9 @@ function esc( str ) {
 	return d.innerHTML;
 }
 
-// ---- Favourites (localStorage) ----
-function loadFavs() {
-	try { return JSON.parse( localStorage.getItem( 'wpte_dz_github_favs' ) || '[]' ); }
-	catch (e) { return []; }
-}
+// ---- Favourites (persisted server-side in a single option) ----
 function saveFavs() {
-	try { localStorage.setItem( 'wpte_dz_github_favs', JSON.stringify( state.favs ) ); }
-	catch (e) {}
+	post( 'wpte_dz_gh_save_favorites', { favorites: JSON.stringify( state.favs ) } );
 }
 function isFav( full_name ) { return state.favs.indexOf( full_name ) !== -1; }
 function toggleFav( full_name ) {
@@ -219,9 +215,9 @@ function renderApp() {
 			'<button class="wte-dbg-refresh-btn" id="gh-refresh" title="Refresh repositories"></button>',
 			'<span class="gh-toolbar-sep"></span>',
 			'<div class="gh-tabs" id="gh-tabs">',
-			'<button class="gh-tab' + ( state.tab === 'issues' ? ' is-active' : '' ) + '" data-tab="issues">Issues <span class="wte-dbg-count-badge" id="tab-count-issues"></span></button>',
 			'<button class="gh-tab' + ( state.tab === 'all'    ? ' is-active' : '' ) + '" data-tab="all">Repos <span class="wte-dbg-count-badge" id="tab-count-all">\u2026</span></button>',
 			'<button class="gh-tab gh-tab--fav' + ( state.tab === 'favs' ? ' is-active' : '' ) + '" data-tab="favs" style="display:' + ( state.favs.length > 0 ? '' : 'none' ) + '">\u2605 Favs <span class="wte-dbg-count-badge" id="tab-count-favs">0</span></button>',
+			'<button class="gh-tab' + ( state.tab === 'issues' ? ' is-active' : '' ) + '" data-tab="issues">Issues <span class="wte-dbg-count-badge" id="tab-count-issues"></span></button>',
 			'</div>',
 			'<span id="gh-user-info" class="gh-user-info"></span>',
 			'</div>',
@@ -307,17 +303,8 @@ function renderApp() {
 	if ( state.tab === 'issues' ) {
 		renderIssuesGrid();
 	} else {
-		var wrap = document.getElementById( 'gh-grid-wrap' );
-		if ( wrap ) {
-			wrap.innerHTML = '<div class="gh-idle-state">'
-				+ githubIcon( 28 )
-				+ '<p>Click <strong>Load repositories</strong> to fetch your GitHub repos.</p>'
-				+ '<button class="gh-btn--load-repos" id="gh-load-repos-btn">Load repositories</button>'
-				+ '</div>';
-			document.getElementById( 'gh-load-repos-btn' ).addEventListener( 'click', function() {
-				loadRepos( true );
-			} );
-		}
+		// Repos/Favs tabs need repos loaded up front so the tab count badges are accurate.
+		loadRepos( false );
 	}
 }
 
@@ -444,8 +431,16 @@ function renderGrid() {
 		var total      = g.repos.length;
 		var totalPages = Math.max( 1, Math.ceil( total / REPO_PAGE_SIZE ) );
 		var page       = Math.min( sectionPages[ g.owner ] || 1, totalPages );
-		var sliced     = g.repos.slice( ( page - 1 ) * REPO_PAGE_SIZE, page * REPO_PAGE_SIZE );
-		var gridCards  = sliced.map( function( r ) { return cardHtml( r, cardIdx++ ); } ).join( '' );
+
+		// Render every repo up front, chunked into page-sized blocks the grid scrolls between
+		// (scrolling — not slicing — is what reveals the remaining repos; see bindSectionGridScroll()).
+		var gridCards = '';
+		for ( var p = 0; p < totalPages; p++ ) {
+			var slice = g.repos.slice( p * REPO_PAGE_SIZE, ( p + 1 ) * REPO_PAGE_SIZE );
+			gridCards += '<div class="gh-grid-page" data-page="' + ( p + 1 ) + '">'
+				+ slice.map( function( r ) { return cardHtml( r, cardIdx++ ); } ).join( '' )
+				+ '</div>';
+		}
 
 		var initials = esc( nameInitials( g.owner ) );
 		var count    = total + ' repo' + ( total === 1 ? '' : 's' );
@@ -487,21 +482,42 @@ function renderGrid() {
 		toggleSectionCollapsed( owner );
 	} );
 
-	// Section pagination via event delegation.
+	// Section pagination: scrolls only that section's own .gh-grid, never the others.
 	document.getElementById( 'gh-grid' ).addEventListener( 'click', function( e ) {
 		var btn = e.target.closest( '.gh-section__pagination .wte-dbg-page-btn' );
 		if ( ! btn || btn.getAttribute( 'aria-disabled' ) === 'true' ) return;
-		var hdr   = btn.closest( '.gh-section__header' );
-		var owner = hdr.dataset.owner;
-		var cur   = sectionPages[ owner ] || 1;
-		sectionPages[ owner ] = btn.classList.contains( 'sec-page-prev' ) ? cur - 1 : cur + 1;
-		renderGrid();
+		var hdr     = btn.closest( '.gh-section__header' );
+		var section = hdr.closest( '.gh-section' );
+		var owner   = hdr.dataset.owner;
+		var cur     = sectionPages[ owner ] || 1;
+		var target  = btn.classList.contains( 'sec-page-prev' ) ? cur - 1 : cur + 1;
+		goToGridPage( section, owner, target );
+	} );
+
+	// Wire scroll-driven page sync + click-to-scroll for every section's grid.
+	document.querySelectorAll( '.gh-section' ).forEach( function( section ) {
+		var grid  = section.querySelector( '.gh-grid' );
+		var owner = section.dataset.owner;
+		if ( ! grid ) return;
+
+		// Restore the last-viewed page (e.g. after a fav toggle re-renders the whole grid) without animating.
+		var restorePage = sectionPages[ owner ] || 1;
+		if ( restorePage > 1 ) {
+			var target = grid.querySelectorAll( '.gh-grid-page' )[ restorePage - 1 ];
+			if ( target ) grid.scrollTop = blockOffsetIn( grid, target );
+		}
+
+		grid.addEventListener( 'scroll', function() {
+			clearTimeout( grid._scrollTimer );
+			grid._scrollTimer = setTimeout( function() { syncGridPageFromScroll( section, grid, owner ); }, 60 );
+		} );
 	} );
 
 	// Card open/close via event delegation.
 	document.getElementById( 'gh-grid' ).addEventListener( 'click', function( e ) {
 		if ( e.target.closest( '.gh-section__header' ) ) return;
 		if ( e.target.closest( '.gh-fav-btn' ) ) return;
+		if ( e.target.closest( '.gh-card__refresh-btn' ) ) return;
 		var card = e.target.closest( '.gh-card' );
 		if ( ! card || ! e.target.closest( '.gh-card__head, .gh-card__expand-btn' ) ) return;
 
@@ -536,6 +552,72 @@ function renderGrid() {
 		}
 		if ( wasOnFavs ) renderGrid();
 	} );
+
+	// Per-repo tag refetch, only reachable while the card is expanded (see CSS).
+	document.getElementById( 'gh-grid' ).addEventListener( 'click', function( e ) {
+		var btn = e.target.closest( '.gh-card__refresh-btn' );
+		if ( ! btn || btn.classList.contains( 'is-loading' ) ) return;
+		e.stopPropagation();
+		var card     = btn.closest( '.gh-card' );
+		var fullName = btn.dataset.repo;
+		var panel    = card.querySelector( '.gh-releases' );
+
+		btn.classList.add( 'is-loading' );
+		btn.disabled = true;
+		refetchReleases( fullName ).then( function( releases ) {
+			renderReleases( panel, releases, card.dataset.name, null, fullName );
+		} ).catch( function( err ) {
+			setStatus( 'Failed to refresh: ' + ( err && err.message ? err.message : 'network error.' ), 'error' );
+		} ).then( function() {
+			btn.classList.remove( 'is-loading' );
+			btn.disabled = false;
+		} );
+	} );
+}
+
+// ---- Section grid scroll paging ----
+// Offset of a block relative to its scrollable container's content, regardless of offsetParent.
+function blockOffsetIn( container, block ) {
+	return block.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+}
+
+function updateGridPaginationUi( section, owner ) {
+	var grid = section.querySelector( '.gh-grid' );
+	if ( ! grid ) return;
+	var totalPages = grid.querySelectorAll( '.gh-grid-page' ).length;
+	var page       = Math.min( sectionPages[ owner ] || 1, totalPages || 1 );
+	sectionPages[ owner ] = page;
+
+	var indicator = section.querySelector( '.gh-page-indicator' );
+	if ( indicator ) indicator.textContent = page + ' / ' + totalPages;
+	var prev = section.querySelector( '.sec-page-prev' );
+	var next = section.querySelector( '.sec-page-next' );
+	if ( prev ) prev.setAttribute( 'aria-disabled', page <= 1 ? 'true' : 'false' );
+	if ( next ) next.setAttribute( 'aria-disabled', page >= totalPages ? 'true' : 'false' );
+}
+
+// Scroll only this section's own grid to the given page — sibling sections never re-render or move.
+function goToGridPage( section, owner, page ) {
+	var grid = section.querySelector( '.gh-grid' );
+	if ( ! grid ) return;
+	var target = grid.querySelectorAll( '.gh-grid-page' )[ page - 1 ];
+	if ( ! target ) return;
+	sectionPages[ owner ] = page;
+	grid.scrollTo( { top: blockOffsetIn( grid, target ), behavior: 'smooth' } );
+	updateGridPaginationUi( section, owner );
+}
+
+// Recompute the active page for one section from its own scroll position (auto-updates while scrolling).
+function syncGridPageFromScroll( section, grid, owner ) {
+	var blocks = grid.querySelectorAll( '.gh-grid-page' );
+	var page   = 1;
+	for ( var i = 0; i < blocks.length; i++ ) {
+		if ( blockOffsetIn( grid, blocks[ i ] ) <= grid.scrollTop + 8 ) page = i + 1;
+	}
+	if ( page !== ( sectionPages[ owner ] || 1 ) ) {
+		sectionPages[ owner ] = page;
+		updateGridPaginationUi( section, owner );
+	}
 }
 
 function filteredRepos() {
@@ -663,6 +745,9 @@ function cardHtml( r, i ) {
 		'<button class="gh-fav-btn' + ( fav ? ' is-fav' : '' ) + '" data-repo="' + esc( r.full_name ) + '" title="' + ( fav ? 'Remove from favourites' : 'Add to favourites' ) + '" aria-label="Favourite">',
 		'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
 		'</button>',
+		'<button class="gh-card__refresh-btn" data-repo="' + esc( r.full_name ) + '" title="Refetch tags" aria-label="Refetch tags">',
+		refreshIconSvg(),
+		'</button>',
 		'<button class="gh-card__expand-btn" aria-label="Toggle releases">',
 		'<svg class="gh-card__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>',
 		'</button>',
@@ -677,27 +762,30 @@ function cardHtml( r, i ) {
 }
 
 // ---- Load releases ----
+// Refetches releases for fullName only, bypassing releaseCache, and returns them as a Promise.
+function refetchReleases( fullName ) {
+	return post( 'wpte_dz_gh_get_releases', { full_name: fullName } ).then( function( res ) {
+		if ( ! res.success ) throw new Error( ( res.data && res.data.message ) ? res.data.message : 'Failed to load releases.' );
+		releaseCache[ fullName ] = res.data.releases;
+		setStatus( res.data.releases.length + ' release' + ( res.data.releases.length === 1 ? '' : 's' ) + ' loaded.', 'success' );
+		return res.data.releases;
+	} );
+}
+
 function loadReleases( card, fullName ) {
 	var panel = card.querySelector( '.gh-releases' );
+
 	if ( releaseCache[ fullName ] ) {
-		renderReleases( panel, releaseCache[ fullName ], card.dataset.name );
+		renderReleases( panel, releaseCache[ fullName ], card.dataset.name, null, fullName );
 		return;
 	}
 
 	setStatus( 'Loading releases for ' + fullName + '\u2026', 'info' );
-	post( 'wpte_dz_gh_get_releases', { full_name: fullName } ).then( function( res ) {
-		if ( res.success ) {
-			releaseCache[ fullName ] = res.data.releases;
-			setStatus( res.data.releases.length + ' release' + ( res.data.releases.length === 1 ? '' : 's' ) + ' loaded.', 'success' );
-			renderReleases( panel, res.data.releases, card.dataset.name );
-		} else {
-			var msg = ( res.data && res.data.message ) ? res.data.message : 'Failed to load releases.';
-			panel.innerHTML = errorStateHtml( msg );
-			setStatus( 'Failed to load releases: ' + msg, 'error' );
-		}
-	} ).catch( function() {
-		panel.innerHTML = errorStateHtml( 'Request failed.' );
-		setStatus( 'Failed to load releases: network error.', 'error' );
+	refetchReleases( fullName ).then( function( releases ) {
+		renderReleases( panel, releases, card.dataset.name, null, fullName );
+	} ).catch( function( err ) {
+		panel.innerHTML = errorStateHtml( err && err.message ? err.message : 'Request failed.' );
+		setStatus( 'Failed to load releases: ' + ( err && err.message ? err.message : 'network error.' ), 'error' );
 	} );
 }
 
@@ -928,11 +1016,7 @@ function loadPrReleases( row ) {
 
 	var releasesPromise = releaseCache[ fullName ]
 		? Promise.resolve( releaseCache[ fullName ] )
-		: post( 'wpte_dz_gh_get_releases', { full_name: fullName } ).then( function( res ) {
-			if ( ! res.success ) throw new Error( ( res.data && res.data.message ) ? res.data.message : 'Failed to load releases.' );
-			releaseCache[ fullName ] = res.data.releases;
-			return res.data.releases;
-		} );
+		: refetchReleases( fullName );
 
 	var prTagsPromise = branchTagCache[ cacheKey ] !== undefined
 		? Promise.resolve( branchTagCache[ cacheKey ] )
@@ -964,7 +1048,13 @@ function loadPrReleases( row ) {
 		}
 
 		setStatus( filtered.length + ' release' + ( filtered.length === 1 ? '' : 's' ) + ' on ' + branchLabel + '.', 'success' );
-		renderReleases( panel, filtered, repoName );
+		renderReleases( panel, filtered, repoName, function() {
+			return refetchReleases( fullName ).then( function( freshReleases ) {
+				var tagSet2 = {};
+				prTags.forEach( function( t ) { tagSet2[ t ] = true; } );
+				return freshReleases.filter( function( r ) { return tagSet2[ r.tag ]; } );
+			} );
+		}, fullName );
 	} ).catch( function( err ) {
 		panel.innerHTML = errorStateHtml( err && err.message ? err.message : 'Request failed.' );
 		setStatus( 'Failed to load releases: ' + ( err && err.message ? err.message : 'network error.' ), 'error' );
@@ -985,38 +1075,124 @@ function bindReleaseRowEvents( container ) {
 	} );
 }
 
+// Spinner-in-a-circle refresh icon; class="is-spinning" drives the CSS animation while a refetch is in flight.
+function refreshIconSvg() {
+	return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
+}
+
+function bindReleasesRefreshBtn( panel, onRefresh, rerender ) {
+	var btn = panel.querySelector( '.gh-releases-refresh-btn' );
+	if ( ! btn || ! onRefresh ) return;
+	btn.addEventListener( 'click', function() {
+		if ( btn.classList.contains( 'is-loading' ) ) return;
+		btn.classList.add( 'is-loading' );
+		btn.disabled = true;
+		onRefresh().then( function( freshReleases ) {
+			rerender( freshReleases );
+		} ).catch( function( err ) {
+			setStatus( 'Failed to refresh: ' + ( err && err.message ? err.message : 'network error.' ), 'error' );
+			btn.classList.remove( 'is-loading' );
+			btn.disabled = false;
+		} );
+	} );
+}
+
 // All release data (tag, name, body) is escaped via esc() in releaseRowHtml().
-function renderReleases( panel, releases, repoName, notice ) {
+// onRefresh, when provided, is a function returning a Promise<releases[]> that refetches just this repo's tags.
+// fullName ("owner/repo") is used to look up the last-installed pill; optional for callers that don't have it.
+function renderReleases( panel, releases, repoName, onRefresh, fullName ) {
+	var refreshBtnHtml = onRefresh
+		? '<button type="button" class="gh-releases-refresh-btn" title="Refetch tags" aria-label="Refetch tags">' + refreshIconSvg() + '</button>'
+		: '';
+
 	if ( ! releases || releases.length === 0 ) {
-		panel.innerHTML = ( notice || '' ) + emptyStateHtml( 'No releases found for this branch.' );
+		panel.innerHTML = emptyStateHtml( 'No releases found for this branch.' )
+			+ ( onRefresh ? '<div class="gh-releases-toolbar gh-releases-toolbar--empty">' + refreshBtnHtml + '</div>' : '' );
+		bindReleasesRefreshBtn( panel, onRefresh, function( freshReleases ) { renderReleases( panel, freshReleases, repoName, onRefresh, fullName ); } );
 		return;
 	}
 
 	var PAGE_SIZE = 5;
 
-	panel.innerHTML = ( notice || '' )
-		+ '<div class="gh-releases-toolbar">'
+	panel.innerHTML = '<div class="gh-releases-toolbar">'
+		+ refreshBtnHtml
 		+ '<div class="gh-releases-pagination wte-dbg-pagination"></div>'
 		+ '</div>'
 		+ '<div class="gh-releases-list"></div>';
+
+	bindReleasesRefreshBtn( panel, onRefresh, function( freshReleases ) { renderReleases( panel, freshReleases, repoName, onRefresh, fullName ); } );
 
 	var toolbar    = panel.querySelector( '.gh-releases-toolbar' );
 	var pagination = panel.querySelector( '.gh-releases-pagination' );
 	var list       = panel.querySelector( '.gh-releases-list' );
 	var input      = null;
 	var curPage    = 1;
+	var totalPages = 1;
 	var visible    = releases.slice();
 
-	function renderPage( page ) {
-		curPage    = page;
-		var total      = visible.length;
-		var totalPages = Math.max( 1, Math.ceil( total / PAGE_SIZE ) );
+	// Offset of a page block relative to the scrollable list's content, regardless of offsetParent.
+	function blockOffset( block ) {
+		return block.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+	}
+
+	function updatePaginationUi() {
+		var total = visible.length;
+
+		if ( input ) {
+			toolbar.querySelector( '.gh-releases-search__count' ).textContent = total + ' tag' + ( total === 1 ? '' : 's' );
+		}
+
+		// Hide toolbar only when no search exists and single page \u2014 once search is injected, keep toolbar visible.
+		if ( ! input && totalPages <= 1 ) {
+			toolbar.style.display = 'none';
+			return;
+		}
+		toolbar.style.display = '';
+
+		// Show pagination only when multiple pages; clear it otherwise so layout stays clean.
+		pagination.innerHTML = totalPages > 1
+			? '<button class="wte-dbg-page-btn gh-page-prev"' + ( curPage === 1 ? ' disabled' : '' ) + '>\u2039</button>'
+				+ '<span class="gh-page-indicator">' + curPage + ' / ' + totalPages + '</span>'
+				+ '<button class="wte-dbg-page-btn gh-page-next"' + ( curPage === totalPages ? ' disabled' : '' ) + '>\u203a</button>'
+			: '';
+	}
+
+	// Scroll to the top of the given page's block within the scrollable list.
+	function goToPage( page ) {
+		var blocks = list.querySelectorAll( '.gh-releases-page' );
+		var target = blocks[ page - 1 ];
+		if ( ! target ) return;
+		curPage = page;
+		list.scrollTo( { top: blockOffset( target ), behavior: 'smooth' } );
+		updatePaginationUi();
+	}
+
+	// Recompute the active page from current scroll position (auto-updates while scrolling).
+	function syncPageFromScroll() {
+		var blocks = list.querySelectorAll( '.gh-releases-page' );
+		var page   = 1;
+		for ( var i = 0; i < blocks.length; i++ ) {
+			if ( blockOffset( blocks[ i ] ) <= list.scrollTop + 8 ) page = i + 1;
+		}
+		if ( page !== curPage ) {
+			curPage = page;
+			updatePaginationUi();
+		}
+	}
+
+	function renderList() {
+		var total = visible.length;
+		totalPages = Math.max( 1, Math.ceil( total / PAGE_SIZE ) );
 		if ( curPage > totalPages ) curPage = totalPages;
 
-		var start = ( curPage - 1 ) * PAGE_SIZE;
-		var slice = visible.slice( start, start + PAGE_SIZE );
-
-		list.innerHTML = slice.map( function( r ) { return releaseRowHtml( r, repoName ); } ).join( '' );
+		var html = '';
+		for ( var p = 0; p < totalPages; p++ ) {
+			var slice = visible.slice( p * PAGE_SIZE, ( p + 1 ) * PAGE_SIZE );
+			html += '<div class="gh-releases-page" data-page="' + ( p + 1 ) + '">'
+				+ slice.map( function( r ) { return releaseRowHtml( r, repoName, fullName ); } ).join( '' )
+				+ '</div>';
+		}
+		list.innerHTML = html;
 		bindReleaseRowEvents( list );
 
 		// Inject search once when total releases exceed one page.
@@ -1047,47 +1223,38 @@ function renderReleases( panel, releases, repoName, notice ) {
 						|| ( r.name || '' ).toLowerCase().indexOf( q ) !== -1
 						|| ( r.branch || '' ).toLowerCase().indexOf( q ) !== -1;
 				} );
-				renderPage( 1 );
+				curPage = 1;
+				list.scrollTop = 0;
+				renderList();
 			} );
 		}
 
-		// Hide toolbar only when no search exists and single page \u2014 once search is injected, keep toolbar visible.
-		if ( ! input && totalPages <= 1 ) {
-			toolbar.style.display = 'none';
-			return;
-		}
-
-		toolbar.style.display = '';
-
-		if ( input ) {
-			toolbar.querySelector( '.gh-releases-search__count' ).textContent = total + ' tag' + ( total === 1 ? '' : 's' );
-		}
-
-		// Show pagination only when multiple pages; clear it otherwise so layout stays clean.
-		pagination.innerHTML = totalPages > 1
-			? '<button class="wte-dbg-page-btn gh-page-prev"' + ( curPage === 1 ? ' disabled' : '' ) + '>\u2039</button>'
-				+ '<span class="gh-page-indicator">' + curPage + ' / ' + totalPages + '</span>'
-				+ '<button class="wte-dbg-page-btn gh-page-next"' + ( curPage === totalPages ? ' disabled' : '' ) + '>\u203a</button>'
-			: '';
+		updatePaginationUi();
 	}
 
 	pagination.addEventListener( 'click', function( e ) {
 		var btn = e.target.closest( '.wte-dbg-page-btn' );
 		if ( ! btn || btn.disabled ) return;
-		if ( btn.classList.contains( 'gh-page-prev' ) ) { renderPage( curPage - 1 ); }
-		else if ( btn.classList.contains( 'gh-page-next' ) ) { renderPage( curPage + 1 ); }
+		if ( btn.classList.contains( 'gh-page-prev' ) ) { goToPage( curPage - 1 ); }
+		else if ( btn.classList.contains( 'gh-page-next' ) ) { goToPage( curPage + 1 ); }
 	} );
 
-	renderPage( 1 );
+	list.addEventListener( 'scroll', function() {
+		clearTimeout( list._scrollTimer );
+		list._scrollTimer = setTimeout( syncPageFromScroll, 60 );
+	} );
+
+	renderList();
 }
 
 // All data from GitHub API is escaped via esc(). Static SVG/HTML is safe markup.
-function releaseRowHtml( r, repoName ) {
+function releaseRowHtml( r, repoName, fullName ) {
 	var noZip    = ! r.zip_url;
 	var preBadge = r.prerelease ? '<span class="wte-dbg-status wte-dbg-status-pending">Pre</span>' : '';
 	var noBadge  = noZip        ? '<span class="wte-dbg-status wte-dbg-status-cancelled">No ZIP</span>' : '';
 	var status   = getInstalledStatus( repoName, r.tag );
 	var instBadge = installedBadgeHtml( status, r.tag );
+	var lastInstalledBadge = lastInstalledBadgeHtml( fullName, r.tag );
 	var installBtn = noZip
 		? '<span style="font-size:11px;color:var(--dbg-text-muted);">No ZIP asset</span>'
 		: '<button class="wte-dbg-cron-run-btn gh-install-btn">Install</button>';
@@ -1095,9 +1262,10 @@ function releaseRowHtml( r, repoName ) {
 	var branchBadge = r.branch ? '<span class="gh-release__branch" title="Created from branch">' + esc( r.branch ) + '</span>' : '';
 
 	return [
-		'<div class="gh-release" data-zip="' + esc( r.zip_url ) + '" data-repo-name="' + esc( repoName ) + '" data-tag="' + esc( r.tag ) + '">',
+		'<div class="gh-release" data-zip="' + esc( r.zip_url ) + '" data-repo-name="' + esc( repoName ) + '" data-full-name="' + esc( fullName || '' ) + '" data-tag="' + esc( r.tag ) + '">',
 		'<span class="gh-release__tag"><a class="gh-release__tag-label gh-link" href="' + esc( r.html_url ) + '" target="_blank" rel="noopener">' + esc( r.tag ) + '</a>' + preBadge + noBadge + branchBadge + '</span>',
 		instBadge,
+		lastInstalledBadge,
 		'<span class="gh-release__date">' + humanDate( r.published ) + '</span>',
 		'<div class="gh-release__right">' + installBtn + '</div>',
 		'<div class="gh-release__post-install"></div>',
@@ -1105,10 +1273,37 @@ function releaseRowHtml( r, repoName ) {
 	].join( '' );
 }
 
+// Pill shown on the release row matching the repo's most recently installed tag.
+function lastInstalledBadgeHtml( fullName, tag ) {
+	var entry = fullName && state.lastInstalled[ fullName ];
+	if ( ! entry || normalizeTagValue( entry.tag ) !== normalizeTagValue( tag ) ) return '';
+	var when = entry.installed_at ? humanDate( entry.installed_at * 1000 ) : '';
+	return '<span class="wte-dbg-status gh-last-installed-badge" title="Last installed' + ( when ? ' ' + esc( when ) : '' ) + '">⬇ Last installed</span>';
+}
+
+function normalizeTagValue( tag ) { return ( tag || '' ).replace( /^v/, '' ).toLowerCase(); }
+
 // ---- Install ----
+// Moves the "Last installed" pill to the row matching tag for fullName, across every rendered copy of it.
+function applyLastInstalled( fullName, tag, installedAtSeconds ) {
+	if ( ! fullName ) return;
+	state.lastInstalled[ fullName ] = { tag: tag, installed_at: installedAtSeconds };
+	document.querySelectorAll( '.gh-release' ).forEach( function( el ) {
+		if ( el.dataset.fullName !== fullName ) return;
+		var existing = el.querySelector( '.gh-last-installed-badge' );
+		if ( existing ) existing.remove();
+		var badge = lastInstalledBadgeHtml( fullName, el.dataset.tag );
+		if ( ! badge ) return;
+		var tagSpan = el.querySelector( '.gh-release__tag' );
+		if ( tagSpan ) tagSpan.insertAdjacentHTML( 'afterend', badge );
+	} );
+}
+
 function doInstall( btn, row ) {
 	var zipUrl   = row.dataset.zip;
 	var repoName = row.dataset.repoName;
+	var fullName = row.dataset.fullName;
+	var tag      = row.dataset.tag;
 	var postArea = row.querySelector( '.gh-release__post-install' );
 
 	btn.disabled  = true;
@@ -1118,7 +1313,7 @@ function doInstall( btn, row ) {
 
 	setStatus( 'Installing ' + repoName + '\u2026', 'info' );
 
-	post( 'wpte_dz_gh_install', { zip_url: zipUrl, repo_name: repoName } ).then( function( res ) {
+	post( 'wpte_dz_gh_install', { zip_url: zipUrl, repo_name: repoName, full_name: fullName, tag: tag } ).then( function( res ) {
 		if ( res.success ) {
 			var pluginFile = res.data.plugin_file;
 			var pluginName = res.data.plugin_name || '';
@@ -1163,13 +1358,14 @@ function doInstall( btn, row ) {
 			postArea.classList.add( 'is-visible' );
 
 			if ( pluginName ) {
-				var tag = row.dataset.tag;
 				state.installedPlugins[ pluginName ] = {
 					version : tag.replace( /^v/, '' ),
 					active  : !! res.data.activated,
 					file    : pluginFile,
 				};
 			}
+
+			applyLastInstalled( fullName, tag, res.data.last_installed ? res.data.last_installed.installed_at : Math.floor( Date.now() / 1000 ) );
 
 			setStatus( repoName + ' ' + action.toLowerCase() + ' successfully.', 'success' );
 		} else {

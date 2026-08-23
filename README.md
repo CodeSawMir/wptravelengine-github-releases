@@ -16,7 +16,7 @@ Sub-plugin for **WP Travel Engine Dev Zone**. Adds a GitHub tab for release mana
 
 - **Issues tab** — search by URL, project board URL, or keyword; auto-loads linked PRs and release tags
 - **Repos tab** — all personal + org repos grouped by owner, with favourites and collapsible sections
-- **Releases** — one-click install/activate from release zip; shows installed version badge and branch name
+- **Releases** — one-click install/activate from release zip; scrollable release list with a per-repo tag refetch; shows installed-version and last-installed badges plus branch name
 - **Webhook auto-install** — GitHub Projects v2 webhook installs plugins when an issue is moved to *Testing* or *Push Zips*; togglable per-admin
 - **GitHub Downloads log** — last 100 webhook-triggered installs (success + failure) in the Logs tab
 
@@ -72,6 +72,8 @@ The endpoint is only registered when **Auto-install on webhook** is enabled (tog
 | `wpte_dz_github_auto_install` | `yes` / `no` — controls endpoint registration |
 | `wpte_dz_github_download_log` | Last 100 webhook install records |
 | `wpte_dz_github_last_download_ts` | Timestamp of most recent download |
+| `wpte_dz_github_favorites` | Favourited repo `full_name`s |
+| `wpte_dz_github_last_installed` | Per-repo map of most recently installed tag + timestamp |
 
 ---
 
@@ -96,6 +98,8 @@ All require a valid nonce and `manage_options`.
 | `wpte_dz_gh_installed_versions` | All installed plugins → version/active/file |
 | `wpte_dz_gh_get_download_log` | Retrieve download log |
 | `wpte_dz_gh_set_auto_install` | Enable / disable webhook endpoint |
+| `wpte_dz_gh_get_favorites` | Retrieve favourited repos |
+| `wpte_dz_gh_save_favorites` | Persist favourited repos |
 
 ---
 
@@ -110,6 +114,14 @@ All require a valid nonce and `manage_options`.
 ---
 
 ## Changelog
+
+### 1.1.0
+- Repos/Favs/Issues sub-tab order fixed, Repos is now the default tab on load
+- Repos/Favs tab count badges no longer get stuck on load — repos now fetch automatically instead of waiting for a manual "Load repositories" click
+- Favourites now persist server-side in a single option instead of `localStorage`
+- Releases list is scrollable instead of paginated; the page indicator auto-updates on scroll and still supports prev/next
+- Per-repo "Refetch tags" control refreshes just that repo's releases, bypassing the cache
+- "Last installed" pill on the release row matching a repo's most recently installed tag, tracked in a new option
 
 ### 1.0.1
 - Webhook auto-install via GitHub Projects v2 (HMAC-SHA256, replay protection, column gate, trusted-owner allowlist)
