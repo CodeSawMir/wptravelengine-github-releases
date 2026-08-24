@@ -81,6 +81,8 @@ class GithubTool extends AbstractTool {
 			'last_download_ts' => (int) get_option( WPTE_DZ_GITHUB_OPTION_LAST_DL_TS, 0 ),
 			'webhook_url'      => get_rest_url( null, 'github/v1/webhook' ),
 			'auto_install'     => get_option( WPTE_DZ_GITHUB_OPTION_AUTO_INSTALL, 'no' ) === 'yes',
+			'favorites'        => array_values( (array) get_option( WPTE_DZ_GITHUB_OPTION_FAVORITES, [] ) ),
+			'last_installed'   => (object) get_option( WPTE_DZ_GITHUB_OPTION_LAST_INSTALLED, [] ),
 		] );
 	}
 
@@ -103,6 +105,8 @@ class GithubTool extends AbstractTool {
 		add_action( 'wp_ajax_wpte_dz_gh_get_download_log',  [ $this, 'ajax_get_download_log' ] );
 		add_action( 'wp_ajax_wpte_dz_gh_set_auto_install',  [ $this, 'ajax_set_auto_install' ] );
 		add_action( 'wp_ajax_wpte_dz_gh_clear_log',         [ $this, 'ajax_clear_log' ] );
+		add_action( 'wp_ajax_wpte_dz_gh_get_favorites',     [ $this, 'ajax_get_favorites' ] );
+		add_action( 'wp_ajax_wpte_dz_gh_save_favorites',    [ $this, 'ajax_save_favorites' ] );
 	}
 
 	// ── AJAX handlers ────────────────────────────────────────────────────────
@@ -209,11 +213,16 @@ class GithubTool extends AbstractTool {
 		$this->send_result( GithubApi::get_releases( $full_name ), 'releases' );
 	}
 
+	/**
+	 * @since next records the installed tag per repo in WPTE_DZ_GITHUB_OPTION_LAST_INSTALLED.
+	 */
 	public function ajax_install(): void {
 		Admin::verify_request();
 
 		$zip_url   = esc_url_raw( wp_unslash( $_POST['zip_url'] ?? '' ) );
 		$repo_name = $this->post_param( 'repo_name' );
+		$full_name = $this->post_param( 'full_name' );
+		$tag       = $this->post_param( 'tag' );
 
 		if ( ! $zip_url ) {
 			wp_send_json_error( [ 'message' => __( 'No zip URL.', 'wpte-devzone-github' ) ] );
@@ -245,6 +254,14 @@ class GithubTool extends AbstractTool {
 		$result['activated'] = $activated;
 		if ( $activate_err ) {
 			$result['activate_error'] = $activate_err;
+		}
+
+		if ( $full_name && $tag ) {
+			$last_installed = (array) get_option( WPTE_DZ_GITHUB_OPTION_LAST_INSTALLED, [] );
+			$entry           = [ 'tag' => $tag, 'installed_at' => time() ];
+			$last_installed[ $full_name ] = $entry;
+			update_option( WPTE_DZ_GITHUB_OPTION_LAST_INSTALLED, $last_installed );
+			$result['last_installed'] = $entry;
 		}
 
 		wp_send_json_success( $result );
@@ -398,5 +415,22 @@ class GithubTool extends AbstractTool {
 		$enabled = ! empty( $_POST['enabled'] ) && '0' !== $_POST['enabled'];
 		update_option( WPTE_DZ_GITHUB_OPTION_AUTO_INSTALL, $enabled ? 'yes' : 'no' );
 		wp_send_json_success( [ 'auto_install' => $enabled ] );
+	}
+
+	public function ajax_get_favorites(): void {
+		Admin::verify_request();
+
+		$favorites = get_option( WPTE_DZ_GITHUB_OPTION_FAVORITES, [] );
+		wp_send_json_success( [ 'favorites' => array_values( (array) $favorites ) ] );
+	}
+
+	public function ajax_save_favorites(): void {
+		Admin::verify_request();
+
+		$decoded   = json_decode( wp_unslash( $_POST['favorites'] ?? '' ), true );
+		$raw       = is_array( $decoded ) ? $decoded : [];
+		$favorites = array_values( array_unique( array_map( 'sanitize_text_field', $raw ) ) );
+		update_option( WPTE_DZ_GITHUB_OPTION_FAVORITES, $favorites );
+		wp_send_json_success( [ 'favorites' => $favorites ] );
 	}
 }

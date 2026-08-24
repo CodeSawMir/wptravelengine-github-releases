@@ -420,11 +420,20 @@
 #wpte-dz-github-root .gh-grid-wrap { padding: 16px 20px; }
 
 #wpte-dz-github-root .gh-grid {
+	max-height:      332px;
+	overflow-y:      auto;
+	scroll-behavior: smooth;
+}
+
+/* Repos are chunked into page-sized blocks so the grid can scroll between them (see bindSectionGridScroll). */
+#wpte-dz-github-root .gh-grid-page {
 	display:               grid;
 	grid-template-columns: repeat(2, 1fr);
 	gap:                   8px;
 	align-items:           start;
 }
+
+#wpte-dz-github-root .gh-grid-page + .gh-grid-page { margin-top: 8px; }
 
 /* ── Repo card ────────────────────────────────────────────────────────────── */
 #wpte-dz-github-root .gh-card {
@@ -608,6 +617,27 @@
 #wpte-dz-github-root .gh-fav-btn.is-fav { color: #d4a72c; }
 #wpte-dz-github-root .gh-fav-btn svg    { fill: currentColor; display: block; }
 
+/* Refetch tags — lives in the card actions, only shown while the card is expanded */
+#wpte-dz-github-root .gh-card__refresh-btn {
+	display:       none;
+	background:    none;
+	border:        none;
+	cursor:        pointer;
+	padding:       5px;
+	border-radius: 6px;
+	color:         var(--dbg-text-dim);
+	align-items:   center;
+	justify-content: center;
+	transition:    background 0.12s, color 0.12s;
+	line-height:   1;
+}
+
+#wpte-dz-github-root .gh-card.is-open .gh-card__refresh-btn { display: flex; }
+
+#wpte-dz-github-root .gh-card__refresh-btn:hover:not(:disabled) { background: var(--dbg-hover-bg); color: var(--dbg-accent); }
+#wpte-dz-github-root .gh-card__refresh-btn:disabled              { cursor: default; opacity: .6; }
+#wpte-dz-github-root .gh-card__refresh-btn.is-loading svg        { animation: gh-refresh-spin 0.7s linear infinite; }
+
 #wpte-dz-github-root .gh-card__expand-btn {
 	background:      none;
 	border:          none;
@@ -639,6 +669,40 @@
 	padding:       10px 14px;
 	border-bottom: 1px solid var(--dbg-border-faint);
 	background:    var(--dbg-bg);
+}
+
+/* Empty-state toolbar variant: no search/pagination, just the refetch button on the right */
+#wpte-dz-github-root .gh-releases-toolbar--empty { justify-content: flex-end; }
+
+/* Per-repo tag refetch: icon button sitting between the search box and pagination */
+#wpte-dz-github-root .gh-releases-refresh-btn {
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	flex-shrink:     0;
+	width:           26px;
+	height:          26px;
+	padding:         0;
+	border:          none;
+	border-radius:   6px;
+	background:      transparent;
+	color:           var(--dbg-text-muted);
+	cursor:          pointer;
+	transition:      background 0.12s, color 0.12s;
+}
+
+#wpte-dz-github-root .gh-releases-refresh-btn:hover:not(:disabled) {
+	background: var(--dbg-hover-bg);
+	color:      var(--dbg-accent);
+}
+
+#wpte-dz-github-root .gh-releases-refresh-btn:disabled { cursor: default; opacity: .75; }
+
+#wpte-dz-github-root .gh-releases-refresh-btn.is-loading svg { animation: gh-refresh-spin 0.7s linear infinite; }
+
+@keyframes gh-refresh-spin {
+	from { transform: rotate(0deg); }
+	to   { transform: rotate(360deg); }
 }
 
 #wpte-dz-github-root .gh-releases-search {
@@ -730,6 +794,13 @@
 	border:        none;
 	border-top:    1px solid var(--dbg-border-faint);
 	border-radius: 0;
+}
+
+/* ── Releases list: scrollable instead of paged ───────────────────────────── */
+#wpte-dz-github-root .gh-releases-list {
+	max-height: 340px;
+	overflow-y: auto;
+	scroll-behavior: smooth;
 }
 
 /* ── Release rows ─────────────────────────────────────────────────────────── */
@@ -830,6 +901,13 @@
 
 #wpte-dz-github-root .gh-release__result.ok  { color: #1a7a40; }
 #wpte-dz-github-root .gh-release__result.err { color: #8a1f1f; }
+/* Pill marking the release row matching a repo's most recently installed tag. */
+#wpte-dz-github-root .gh-last-installed-badge {
+	background: rgba(99,179,237,.12);
+	color:      var(--dbg-accent);
+	border:     1px solid rgba(99,179,237,.3);
+}
+
 #wpte-dz-github-root .gh-release__active-badge {
 	font-size:     10px;
 	font-weight:   700;
