@@ -527,6 +527,7 @@ function renderGrid() {
 		if ( ! wasOpen ) {
 			card.classList.add( 'is-open' );
 			loadReleases( card, fullName );
+			scrollCardIntoGridView( card );
 		}
 	} );
 
@@ -579,6 +580,20 @@ function renderGrid() {
 // Offset of a block relative to its scrollable container's content, regardless of offsetParent.
 function blockOffsetIn( container, block ) {
 	return block.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+}
+
+// Bring a just-expanded card to the top of its scrollable grid, then make sure the grid
+// itself is on screen — the grid grows when a card opens, which can push it past the fold.
+function scrollCardIntoGridView( card ) {
+	var grid = card.closest( '.gh-grid' );
+	if ( ! grid ) return;
+	requestAnimationFrame( function() {
+		grid.scrollTo( { top: blockOffsetIn( grid, card ), behavior: 'smooth' } );
+		var rect = grid.getBoundingClientRect();
+		if ( rect.bottom > window.innerHeight || rect.top < 0 ) {
+			grid.scrollIntoView( { block: 'nearest', behavior: 'smooth' } );
+		}
+	} );
 }
 
 function updateGridPaginationUi( section, owner ) {

@@ -423,7 +423,11 @@
 	max-height:      332px;
 	overflow-y:      auto;
 	scroll-behavior: smooth;
+	transition:      max-height 0.18s;
 }
+
+/* An expanded card is taller than the collapsed grid viewport, so give the grid room. */
+#wpte-dz-github-root .gh-grid:has( .gh-card.is-open ) { max-height: 640px; }
 
 /* Repos are chunked into page-sized blocks so the grid can scroll between them (see bindSectionGridScroll). */
 #wpte-dz-github-root .gh-grid-page {
